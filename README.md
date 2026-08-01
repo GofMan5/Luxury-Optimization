@@ -2,6 +2,8 @@
 
 Windows-утилита для игровой и системной оптимизации с точным планом, резервной копией, проверкой результата и откатом. Продукт больше не содержит ремонт старых BAT-твиков, security-настройки, сторонние драйверы или игровые моды.
 
+В 3.1 добавлена временная игровая boost-сессия: оптимизатор повышает профиль через UAC, запускает игру без прав администратора и автоматически возвращает исходные настройки после выхода, ошибки запуска или Ctrl+C.
+
 ## Профили
 
 ### Рекомендуемый
@@ -34,6 +36,7 @@ Windows-утилита для игровой и системной оптими�
 - backup защищён ACL и SHA-256 seal в HKLM;
 - power, Ethernet, registry и live mouse-состояние проверяются после применения;
 - `restore` возвращает последнюю операцию;
+- `boost` блокирует параллельные `apply/restore` до завершения игры и выполняет откат до снятия блокировки;
 - `clean` работает без elevation и не следует по reparse points.
 
 ## Что намеренно отсутствует
@@ -54,6 +57,7 @@ GofMan3-Optimizer-amd64.exe plan --profile recommended
 GofMan3-Optimizer-amd64.exe plan --profile maximum
 GofMan3-Optimizer-amd64.exe apply --profile recommended
 GofMan3-Optimizer-amd64.exe apply --profile maximum
+GofMan3-Optimizer-amd64.exe boost --game "C:\Games\Game\Game.exe" --profile maximum -- -windowed
 GofMan3-Optimizer-amd64.exe restore
 GofMan3-Optimizer-amd64.exe clean --days 2
 ```
@@ -65,7 +69,7 @@ GofMan3-Optimizer-amd64.exe clean --days 2
 Нужен Go 1.25+.
 
 ```powershell
-.\build.ps1 -Version 3.0.0
+.\build.ps1 -Version 3.1.0
 go test ./...
 go test -race ./...
 go vet ./...

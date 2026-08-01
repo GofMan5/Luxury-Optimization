@@ -200,7 +200,7 @@ func executeIntentCmd(pending intent) tea.Cmd {
 		switch pending.kind {
 		case "apply":
 			if isAdministrator() {
-				result.BackupPath, result.Err = applyProfile(pending.profile)
+				result.BackupPath, result.Err = applyProfile(pending.profile, false)
 			} else {
 				args := []string{"apply", "--profile", pending.profile, "--yes", "--quiet"}
 				args = append(args, "--parent-pid", fmt.Sprintf("%d", os.Getpid()))
@@ -213,7 +213,7 @@ func executeIntentCmd(pending intent) tea.Cmd {
 				if err != nil {
 					result.Err = err
 				} else {
-					result.BackupPath, result.Err = restoreLatest(sid)
+					result.BackupPath, result.Err = restoreLatest(sid, false)
 				}
 			} else {
 				result.Err = runElevatedAndWait([]string{"restore", "--yes", "--quiet", "--parent-pid", fmt.Sprintf("%d", os.Getpid())})

@@ -16,6 +16,7 @@ The project optimizes gaming responsiveness, frametime stability and general Win
 | PCIe/USB AC power saving off | Avoids wake latency under the maximum profile | AC only; maximum profile warns about heat/power |
 | Ethernet EEE / Interrupt Moderation off | Can reduce latency | Physical Ethernet only; driver must advertise the keyword |
 | Startup/menu delay off | Improves perceived desktop responsiveness | User values are backed up and restored |
+| Temporary game boost | Keeps the maximum profile scoped to one play session | Game stays non-elevated; session lock, exact backup and automatic restore |
 
 ## Conditional or benchmark first
 

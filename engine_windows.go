@@ -63,7 +63,7 @@ func buildPlan(profileID string) (Plan, error) {
 	return plan, nil
 }
 
-func applyProfile(profileID string) (string, error) {
+func applyProfile(profileID string, boostSession bool) (string, error) {
 	if !isAdministrator() {
 		return "", errors.New("для применения нужны права администратора")
 	}
@@ -72,6 +72,9 @@ func applyProfile(profileID string) (string, error) {
 		return "", err
 	}
 	defer releaseLock()
+	if err := checkBoostSession(boostSession); err != nil {
+		return "", err
+	}
 	profile, err := profileByID(profileID)
 	if err != nil {
 		return "", err
@@ -327,7 +330,7 @@ func profileChangesMouse(changes []RegChange) bool {
 	return wanted["mouse-threshold-1"] && wanted["mouse-threshold-2"] && wanted["mouse-speed"]
 }
 
-func restoreLatest(requestSID string) (string, error) {
+func restoreLatest(requestSID string, boostSession bool) (string, error) {
 	if !isAdministrator() {
 		return "", errors.New("для восстановления нужны права администратора")
 	}
@@ -339,6 +342,9 @@ func restoreLatest(requestSID string) (string, error) {
 		return "", err
 	}
 	defer releaseLock()
+	if err := checkBoostSession(boostSession); err != nil {
+		return "", err
+	}
 	backup, err := loadLatestBackup(requestSID)
 	if err != nil {
 		return "", err

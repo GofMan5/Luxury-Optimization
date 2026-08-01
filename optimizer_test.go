@@ -335,3 +335,67 @@ func TestFailedRegistryRollbackRemainsRetryable(t *testing.T) {
 		t.Fatalf("failed rollback lost retry state: %#v", backup)
 	}
 }
+
+func TestBoostSessionLockGuardsOperations(t *testing.T) {
+	if err := checkBoostSession(true); err == nil {
+		t.Fatal("boost bypass worked without an active session")
+	}
+	release, err := acquireBoostSessionLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if err := checkBoostSession(true); err != nil {
+		t.Fatalf("active boost session was not recognized: %v", err)
+	}
+	if err := checkBoostSession(false); err == nil {
+		t.Fatal("normal operation was allowed during boost session")
+	}
+}
+
+func TestBoostSessionFlagIsInternalOnly(t *testing.T) {
+	for _, args := range [][]string{
+		{"apply", "--boost-session", "--yes"},
+		{"restore", "--boost-session", "--yes"},
+	} {
+		if err := run(args); err == nil || !strings.Contains(err.Error(), "parent-pid") {
+			t.Fatalf("public boost bypass was not rejected for %v: %v", args, err)
+		}
+	}
+}
+
+func TestValidateGameExecutable(t *testing.T) {
+	root := t.TempDir()
+	valid := filepath.Join(root, "game.exe")
+	if err := os.WriteFile(valid, []byte("MZfixture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if path, err := validateGameExecutable(valid); err != nil || !filepath.IsAbs(path) {
+		t.Fatalf("valid MZ executable rejected: path=%q err=%v", path, err)
+	}
+
+	nonEXE := filepath.Join(root, "game.bin")
+	invalidPE := filepath.Join(root, "invalid.exe")
+	directory := filepath.Join(root, "directory.exe")
+	if err := os.WriteFile(nonEXE, []byte("MZ"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(invalidPE, []byte("NO"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for name, value := range map[string]string{
+		"relative":   "game.exe",
+		"non-exe":    nonEXE,
+		"invalid-pe": invalidPE,
+		"directory":  directory,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := validateGameExecutable(value); err == nil {
+				t.Fatalf("invalid game path accepted: %s", value)
+			}
+		})
+	}
+}

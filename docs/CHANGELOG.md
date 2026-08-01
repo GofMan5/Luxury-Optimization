@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.1.0 - 2026-08-01
+
+### Added
+
+- Temporary `boost` sessions apply a selected profile, launch one validated game EXE without elevation, monitor it and restore the exact backup afterwards.
+- Absolute-path, regular-file and PE/MZ validation before game launch; arguments are passed directly without a shell.
+- A session mutex blocks ordinary `apply` and `restore` while a game boost is active.
+
+### Reliability
+
+- Restore is registered before game launch and runs after normal exit, launch failure, non-zero game exit or Ctrl+C.
+- The elevated internal bypass requires an elevated child, a verified same-executable parent PID and a live boost-session mutex.
+- Added regression coverage for the mutex boundary and rejected game paths.
+
 ## 3.0.0 - 2026-08-01
 
 ### Focus

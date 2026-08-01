@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var version = "3.0.0-dev"
+var version = "3.1.0-dev"
 
 func main() {
 	args, resultPath := stripResultFile(os.Args[1:])
@@ -66,6 +66,8 @@ func run(args []string) error {
 		return applyCommand(args[1:])
 	case "restore":
 		return restoreCommand(args[1:])
+	case "boost":
+		return boostCommand(args[1:])
 	case "clean":
 		return cleanCommand(args[1:])
 	case "version", "--version", "-v":
@@ -134,8 +136,12 @@ func applyCommand(args []string) error {
 	yes := set.Bool("yes", false, "подтвердить")
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
+	boostSession := set.Bool("boost-session", false, "internal: активная игровая сессия")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
+		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
 	}
 	if *profileID != profileRecommended && *profileID != profileMaximum {
 		return errors.New("apply поддерживает только recommended и maximum")
@@ -159,14 +165,9 @@ func applyCommand(args []string) error {
 		return errors.New("операция отменена")
 	}
 	if !isAdministrator() {
-		sid, err := currentUserSID()
-		if err != nil {
-			return err
-		}
-		_ = sid // SID is derived again from the live parent token in the elevated child.
 		return runElevatedAndWait([]string{"apply", "--profile", *profileID, "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
 	}
-	path, err := applyProfile(*profileID)
+	path, err := applyProfile(*profileID, *boostSession)
 	if err != nil {
 		return err
 	}
@@ -181,8 +182,12 @@ func restoreCommand(args []string) error {
 	yes := set.Bool("yes", false, "подтвердить")
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
+	boostSession := set.Bool("boost-session", false, "internal: активная игровая сессия")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
+		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
 	}
 	if !*yes && !confirm("Восстановить последнюю применённую резервную копию?") {
 		return errors.New("операция отменена")
@@ -207,7 +212,7 @@ func restoreCommand(args []string) error {
 	if !isAdministrator() {
 		return runElevatedAndWait([]string{"restore", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
 	}
-	path, err := restoreLatest(requestSID)
+	path, err := restoreLatest(requestSID, *boostSession)
 	if err != nil {
 		return err
 	}
@@ -288,6 +293,8 @@ func printHelp() {
   plan --profile recommended|maximum
                                         точный план без изменений
   apply --profile recommended|maximum  применить с backup и проверкой
+  boost --game C:\Games\Game.exe --profile maximum -- [аргументы игры]
+                                        применить профиль только на время игры
   restore                              откатить последнюю операцию
   clean --days 2                       безопасно очистить старые temp-файлы
   version                              версия

@@ -482,13 +482,21 @@ func writeElevatedResult(path string, parentPID uint32, operationErr error) erro
 }
 
 func acquireOperationLock() (func(), error) {
-	name, _ := windows.UTF16PtrFromString(`Global\GofMan3Optimizer-Transaction-v1`)
+	return acquireNamedMutex(`Global\GofMan3Optimizer-Transaction-v1`, "другая операция оптимизатора уже выполняется")
+}
+
+func acquireBoostSessionLock() (func(), error) {
+	return acquireNamedMutex(`Local\GofMan3Optimizer-BoostSession-v1`, "другая игровая boost-сессия уже выполняется")
+}
+
+func acquireNamedMutex(value, busyMessage string) (func(), error) {
+	name, _ := windows.UTF16PtrFromString(value)
 	handle, err := windows.CreateMutex(nil, true, name)
 	if errors.Is(err, windows.ERROR_ALREADY_EXISTS) {
 		if handle != 0 {
 			windows.CloseHandle(handle)
 		}
-		return nil, errors.New("другая операция оптимизатора уже выполняется")
+		return nil, errors.New(busyMessage)
 	}
 	if err != nil {
 		return nil, err
@@ -497,6 +505,25 @@ func acquireOperationLock() (func(), error) {
 		_ = windows.ReleaseMutex(handle)
 		_ = windows.CloseHandle(handle)
 	}, nil
+}
+
+func checkBoostSession(required bool) error {
+	name, _ := windows.UTF16PtrFromString(`Local\GofMan3Optimizer-BoostSession-v1`)
+	handle, err := windows.CreateMutex(nil, false, name)
+	active := errors.Is(err, windows.ERROR_ALREADY_EXISTS)
+	if handle != 0 {
+		_ = windows.CloseHandle(handle)
+	}
+	if err != nil && !active {
+		return err
+	}
+	if required && !active {
+		return errors.New("internal boost-session lock is missing")
+	}
+	if !required && active {
+		return errors.New("игровая boost-сессия активна; дождитесь выхода игры")
+	}
+	return nil
 }
 
 func activePowerGUID() (string, error) {
