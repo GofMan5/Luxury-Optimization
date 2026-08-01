@@ -176,9 +176,6 @@ func (m *tuiModel) handleAction(action string) (tea.Model, tea.Cmd) {
 	case "plan-maximum":
 		m.screen, m.loadingText = screenLoading, "Проверяю возможности CPU, GPU и Ethernet"
 		return m, tea.Batch(loadPlanCmd(profileMaximum), spinCmd())
-	case "plan-repair":
-		m.screen, m.loadingText = screenLoading, "Сопоставляю опасные твики старого BAT"
-		return m, tea.Batch(loadPlanCmd(profileRepair), spinCmd())
 	case "apply-plan":
 		m.pending = intent{kind: "apply", profile: m.plan.Profile.ID}
 		m.screen = screenConfirm
@@ -206,13 +203,10 @@ func executeIntentCmd(pending intent) tea.Cmd {
 				result.BackupPath, result.Err = applyProfile(pending.profile)
 			} else {
 				args := []string{"apply", "--profile", pending.profile, "--yes", "--quiet"}
-				if pending.profile == profileRepair {
-					args = []string{"repair-legacy", "--yes", "--quiet"}
-				}
 				args = append(args, "--parent-pid", fmt.Sprintf("%d", os.Getpid()))
 				result.Err = runElevatedAndWait(args)
 			}
-			result.Summary = "Профиль применён и проверен. Для полного эффекта перезагрузите ПК."
+			result.Summary = "Профиль применён и проверен повторным чтением состояния."
 		case "restore":
 			if isAdministrator() {
 				sid, err := currentUserSID()
@@ -224,7 +218,7 @@ func executeIntentCmd(pending intent) tea.Cmd {
 			} else {
 				result.Err = runElevatedAndWait([]string{"restore", "--yes", "--quiet", "--parent-pid", fmt.Sprintf("%d", os.Getpid())})
 			}
-			result.Summary = "Последняя операция отменена. Перезагрузите ПК, если менялась схема или драйверные параметры."
+			result.Summary = "Последняя операция отменена и состояние проверено."
 		case "clean":
 			cleaned, err := cleanTemporaryFiles(2)
 			result.Err = err
@@ -247,9 +241,6 @@ func operationTitle(pending intent) string {
 	case "clean":
 		return "Безопасно очищаю временные файлы"
 	case "apply":
-		if pending.profile == profileRepair {
-			return "Исправляю опасные твики старого BAT"
-		}
 		return "Применяю и проверяю профиль"
 	default:
 		return "Выполняю операцию"
@@ -320,17 +311,16 @@ func (m *tuiModel) renderHome(lines *[]string) {
 	if len(gpuNames) == 0 {
 		gpuNames = []string{"Не определена"}
 	}
-	status := goodStyle.Render("защиты не ослабляются")
+	status := goodStyle.Render("рекомендуемый профиль применён")
 	if len(m.audit.Findings) > 0 {
-		status = badStyle.Render(fmt.Sprintf("опасных следов старого BAT: %d", len(m.audit.Findings)))
+		status = warnStyle.Render("есть настройки к применению")
 	}
 	card := cardStyle.Width(contentWidth - 4).Render("CPU  " + fitText(cpu, contentWidth-10) + "\nGPU  " + fitText(strings.Join(gpuNames, ", "), contentWidth-10) + "\nСТАТУС  " + status)
 	*lines = append(*lines, prefixLines(card, "  ")...)
 	*lines = append(*lines, "")
-	m.addButton(lines, "audit", "Проверить ПК", "read-only аудит железа и старых опасных твиков")
+	m.addButton(lines, "audit", "Проверить ПК", "read-only аудит железа и статуса игровой оптимизации")
 	m.addButton(lines, "plan-recommended", "Рекомендуемый профиль", "Game Mode, capture, мышь и лёгкий интерфейс")
 	m.addButton(lines, "plan-maximum", "Максимальная производительность", "отдельная power-схема + поддерживаемый Ethernet low-latency")
-	m.addButton(lines, "plan-repair", "Ремонт старого BAT", "Firewall, Windows Security, CPU mitigations, CSRSS и private GPU keys")
 	m.addButton(lines, "confirm-clean", "Очистить временные файлы", "только файлы старше 48 часов, без Prefetch и логов")
 	m.addButton(lines, "confirm-restore", "Откатить последнее", "точно восстановить сохранённые значения")
 	m.addButton(lines, "help", "Что именно делает софт", "поддержка железа, ограничения и проверка результата")
@@ -341,14 +331,10 @@ func (m *tuiModel) renderAudit(lines *[]string) {
 	var content []string
 	content = append(content, goodStyle.Render("АУДИТ СИСТЕМЫ"), fmt.Sprintf("Windows: %s %s (build %s)", m.audit.Hardware.OS.Caption, m.audit.Hardware.OS.Architecture, m.audit.Hardware.OS.BuildNumber), "Power GUID: "+m.audit.ActivePowerGUID, "")
 	if len(m.audit.Findings) == 0 {
-		content = append(content, goodStyle.Render("Опасные следы старого BAT не обнаружены в проверенной области."))
+		content = append(content, goodStyle.Render("Рекомендуемый игровой профиль применён полностью."))
 	} else {
 		for _, finding := range m.audit.Findings {
-			style := warnStyle
-			if finding.Severity == "critical" {
-				style = badStyle
-			}
-			content = append(content, style.Render(strings.ToUpper(finding.Severity)+" • "+finding.Title), "  "+finding.Evidence, "  Решение: "+finding.Repair, "")
+			content = append(content, warnStyle.Render(finding.Title), "  "+finding.Evidence, "  Действие: "+finding.Action, "")
 		}
 	}
 	for _, warning := range m.audit.Warnings {
@@ -357,7 +343,7 @@ func (m *tuiModel) renderAudit(lines *[]string) {
 	m.addViewport(lines, content, m.height-12)
 	m.addButton(lines, "refresh-audit", "Обновить аудит", "повторить все read-only проверки")
 	if len(m.audit.Findings) > 0 {
-		m.addButton(lines, "plan-repair", "Открыть план ремонта", "ничего не менять без следующего подтверждения")
+		m.addButton(lines, "plan-recommended", "Открыть рекомендуемый план", "посмотреть точные изменения без применения")
 	}
 	m.addButton(lines, "home", "Назад", "главный экран")
 }
@@ -407,7 +393,6 @@ func (m *tuiModel) renderResult(lines *[]string) {
 	if m.result.BackupPath != "" {
 		content = append(content, "Backup: "+m.result.BackupPath)
 	}
-	content = append(content, m.result.Details...)
 	m.addViewport(lines, content, m.height-11)
 	m.addButton(lines, "refresh-audit", "Посмотреть свежий аудит", "дождаться новой проверки итогового состояния")
 	m.addButton(lines, "home", "На главный экран", "продолжить работу")
@@ -420,7 +405,7 @@ func (m *tuiModel) renderHelp(lines *[]string) {
 		goodStyle.Render("РЕКОМЕНДУЕМЫЙ ПРОФИЛЬ"),
 		"Только документированные пользовательские настройки: Game Mode, отключение фоновой записи, отключение ускорения мыши и тяжёлых анимаций.", "",
 		goodStyle.Render("МАКСИМАЛЬНЫЙ ПРОФИЛЬ"),
-		"Отключает системный power throttling, применяет поддерживаемые CPU EPP/Boost и создаёт отдельную Windows power-схему, не портит текущую. На физическом Ethernet меняет только объявленные драйвером EEE и Interrupt Moderation. Также убирает startup-delay и сокращает задержку меню. Wi-Fi, виртуальные адаптеры и неизвестные свойства пропускаются.", "",
+		"Применяет поддерживаемые CPU EPP/Boost и создаёт отдельную AC power-схему, не портит текущую. На физическом Ethernet меняет только объявленные драйвером EEE и Interrupt Moderation. Также убирает startup-delay и задержку меню. Wi-Fi, виртуальные адаптеры и неизвестные свойства пропускаются.", "",
 		goodStyle.Render("ЧЕГО ЗДЕСЬ НЕТ"),
 		"Нет отключения Defender/Firewall/Spectre/CFG/SEHOP, HPET/BCD-магии, фиксированных affinity masks, private GPU registry keys, разгона и загрузки mutable EXE. Такие действия либо опасны, либо не универсальны, либо не имеют честно измеримого выигрыша.", "",
 		goodStyle.Render("КАК ПРОВЕРЯТЬ ЭФФЕКТ"),

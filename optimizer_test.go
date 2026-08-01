@@ -11,7 +11,7 @@ import (
 )
 
 func TestShippedProfilesHaveNoConflictsOrDangerousTweaks(t *testing.T) {
-	for _, id := range []string{profileRecommended, profileMaximum, profileRepair} {
+	for _, id := range []string{profileRecommended, profileMaximum} {
 		profile, err := profileByID(id)
 		if err != nil {
 			t.Fatal(err)
@@ -29,24 +29,6 @@ func TestShippedProfilesHaveNoConflictsOrDangerousTweaks(t *testing.T) {
 					t.Fatalf("%s contains forbidden target %s", id, target)
 				}
 			}
-		}
-	}
-}
-
-func TestRepairProfileCoversSecurityNotificationTweaks(t *testing.T) {
-	wanted := map[string]bool{
-		"repair-security-toast": false, "repair-security-notifications": false, "repair-security-policy-notifications": false,
-		"repair-security-policy-enhanced": false, "repair-defender-reporting-notifications": false, "repair-global-toasts": false,
-	}
-	profile := repairProfile()
-	for _, change := range profile.Changes {
-		if _, ok := wanted[change.ID]; ok && change.Delete {
-			wanted[change.ID] = true
-		}
-	}
-	for id, found := range wanted {
-		if !found {
-			t.Errorf("repair profile misses %s", id)
 		}
 	}
 }
@@ -166,7 +148,7 @@ func TestTUIHomeActionsAreClickable(t *testing.T) {
 	if view == "" {
 		t.Fatal("empty view")
 	}
-	wanted := map[string]bool{"audit": false, "plan-recommended": false, "plan-maximum": false, "plan-repair": false, "confirm-clean": false, "confirm-restore": false, "help": false, "exit": false}
+	wanted := map[string]bool{"audit": false, "plan-recommended": false, "plan-maximum": false, "confirm-clean": false, "confirm-restore": false, "help": false, "exit": false}
 	for _, box := range model.hitboxes {
 		if _, ok := wanted[box.action]; ok {
 			wanted[box.action] = true

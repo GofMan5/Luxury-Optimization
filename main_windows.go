@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var version = "2.2.1-dev"
+var version = "3.0.0-dev"
 
 func main() {
 	args, resultPath := stripResultFile(os.Args[1:])
@@ -64,8 +64,6 @@ func run(args []string) error {
 		return planCommand(args[1:])
 	case "apply":
 		return applyCommand(args[1:])
-	case "repair-legacy":
-		return repairCommand(args[1:])
 	case "restore":
 		return restoreCommand(args[1:])
 	case "clean":
@@ -109,7 +107,7 @@ func auditCommand(args []string) error {
 
 func planCommand(args []string) error {
 	set := flag.NewFlagSet("plan", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "recommended, maximum или repair-legacy")
+	profileID := set.String("profile", profileRecommended, "recommended или maximum")
 	jsonOnly := set.Bool("json", false, "вывести JSON")
 	if err := set.Parse(args); err != nil {
 		return err
@@ -174,47 +172,6 @@ func applyCommand(args []string) error {
 	}
 	if !*quiet {
 		fmt.Println("Готово. Резервная копия:", path)
-	}
-	return nil
-}
-
-func repairCommand(args []string) error {
-	set := flag.NewFlagSet("repair-legacy", flag.ContinueOnError)
-	yes := set.Bool("yes", false, "подтвердить")
-	quiet := set.Bool("quiet", false, "не печатать результат")
-	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
-	if err := set.Parse(args); err != nil {
-		return err
-	}
-	if !*yes && !confirm("Удалить известные опасные твики старого BAT и включить Firewall?") {
-		return errors.New("операция отменена")
-	}
-	if *parentPID != 0 {
-		if !isAdministrator() {
-			return errors.New("parent-pid разрешён только elevated-процессу")
-		}
-		sid, err := userSIDFromOptimizerProcess(uint32(*parentPID))
-		if err != nil {
-			return err
-		}
-		if err := setRegistryUserSID(sid); err != nil {
-			return err
-		}
-	}
-	if !isAdministrator() {
-		sid, err := currentUserSID()
-		if err != nil {
-			return err
-		}
-		_ = sid
-		return runElevatedAndWait([]string{"repair-legacy", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
-	}
-	path, err := applyProfile(profileRepair)
-	if err != nil {
-		return err
-	}
-	if !*quiet {
-		fmt.Println("Ремонт завершён. Резервная копия:", path)
 	}
 	return nil
 }
@@ -298,10 +255,10 @@ func printAudit(audit Audit) {
 	}
 	fmt.Println("Активная схема:", audit.ActivePowerGUID)
 	if len(audit.Findings) == 0 {
-		fmt.Println("Опасные следы старого BAT не обнаружены.")
+		fmt.Println("Рекомендуемый игровой профиль уже применён полностью.")
 	}
 	for _, finding := range audit.Findings {
-		fmt.Printf("[%s] %s — %s\n", strings.ToUpper(finding.Severity), finding.Title, finding.Evidence)
+		fmt.Printf("%s — %s\n", finding.Title, finding.Evidence)
 	}
 	for _, warning := range audit.Warnings {
 		fmt.Println("Предупреждение:", warning)
@@ -328,10 +285,9 @@ func printHelp() {
 Без аргументов запускается mouse-first TUI.
 
   audit [--json] [--out report.json]   read-only аудит
-  plan --profile recommended|maximum|repair-legacy
+  plan --profile recommended|maximum
                                         точный план без изменений
   apply --profile recommended|maximum  применить с backup и проверкой
-  repair-legacy                        убрать опасные следы старого BAT
   restore                              откатить последнюю операцию
   clean --days 2                       безопасно очистить старые temp-файлы
   version                              версия

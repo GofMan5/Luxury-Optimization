@@ -98,21 +98,6 @@ func applyRegistry(change RegChange) error {
 	if err != nil {
 		return err
 	}
-	if change.Delete {
-		key, err := registry.OpenKey(root, path, registry.SET_VALUE|registryView())
-		if errors.Is(err, registry.ErrNotExist) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		defer key.Close()
-		err = key.DeleteValue(change.Name)
-		if errors.Is(err, registry.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
 	key, _, err := registry.CreateKey(root, path, registry.SET_VALUE|registry.QUERY_VALUE|registryView())
 	if err != nil {
 		return err
@@ -180,9 +165,6 @@ func registryMatches(change RegChange) (bool, string, error) {
 		return false, "", err
 	}
 	current := formatSnapshot(snapshot)
-	if change.Delete {
-		return !snapshot.Existed, current, nil
-	}
 	if !snapshot.Existed || snapshot.Kind != change.Kind {
 		return false, current, nil
 	}
@@ -217,9 +199,6 @@ func formatSnapshot(snapshot RegSnapshot) string {
 }
 
 func formatDesired(change RegChange) string {
-	if change.Delete {
-		return "удалить значение"
-	}
 	switch change.Kind {
 	case registry.DWORD:
 		return fmt.Sprintf("%d", change.DWord)
@@ -228,17 +207,4 @@ func formatDesired(change RegChange) string {
 	default:
 		return fmt.Sprintf("тип %d", change.Kind)
 	}
-}
-
-func readDWord(hive, path, name string) (uint32, bool) {
-	snapshot, err := snapshotRegistry(RegChange{Hive: hive, Path: path, Name: name})
-	if err != nil || !snapshot.Existed || snapshot.Kind != registry.DWORD {
-		return 0, false
-	}
-	return snapshot.DWord, true
-}
-
-func valueExists(hive, path, name string) (RegSnapshot, bool) {
-	snapshot, err := snapshotRegistry(RegChange{Hive: hive, Path: path, Name: name})
-	return snapshot, err == nil && snapshot.Existed
 }

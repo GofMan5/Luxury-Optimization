@@ -7,6 +7,3 @@
 *.sum text eol=lf
 *.txt text eol=lf
 *.ps1 text eol=crlf
-*.bat text eol=crlf
-*.bat whitespace=-trailing-space
-*.cmd text eol=crlf

@@ -21,8 +21,6 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/mgr"
 )
 
 var guidPattern = regexp.MustCompile(`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`)
@@ -31,7 +29,6 @@ var maximumPowerSettings = []PowerSetting{
 	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "bc5038f7-23e0-4960-96da-33abaf5935ec", Value: 100, Name: "Максимальное состояние CPU от сети"},
 	{Subgroup: "501a4d13-42af-4429-9fd1-a8218c268e20", Setting: "ee12f906-d277-404b-b6da-e5fa1a576df5", Value: 0, Name: "PCIe Link State Power Management off"},
 	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", Value: 0, Name: "USB selective suspend off"},
-	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "d4e98f31-5ffe-4ce1-be31-1b38b384c009", Value: 0, Name: "USB hub suspend timeout off"},
 }
 
 var optionalMaximumPowerSettings = []PowerSetting{
@@ -735,153 +732,6 @@ foreach ($item in $items) {
 		return fmt.Errorf("параметры Ethernet: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 	return nil
-}
-
-func captureFirewallRuntime() (FirewallState, error) {
-	manager, err := mgr.Connect()
-	if err != nil {
-		return FirewallState{}, err
-	}
-	defer manager.Disconnect()
-	service, err := manager.OpenService("MpsSvc")
-	if err != nil {
-		return FirewallState{}, err
-	}
-	defer service.Close()
-	status, err := service.Query()
-	if err != nil {
-		return FirewallState{}, err
-	}
-	config, err := service.Config()
-	if err != nil {
-		return FirewallState{}, err
-	}
-	return FirewallState{Captured: true, WasRunning: status.State == svc.Running, StartType: config.StartType}, nil
-}
-
-func repairFirewallRuntime() error {
-	manager, err := mgr.Connect()
-	if err != nil {
-		return err
-	}
-	defer manager.Disconnect()
-	service, err := manager.OpenService("MpsSvc")
-	if err != nil {
-		return err
-	}
-	defer service.Close()
-	config, err := service.Config()
-	if err != nil {
-		return err
-	}
-	config.StartType = mgr.StartAutomatic
-	if err := service.UpdateConfig(config); err != nil {
-		return err
-	}
-	status, err := service.Query()
-	if err != nil {
-		return err
-	}
-	if status.State != svc.Running {
-		if err := service.Start(); err != nil {
-			return err
-		}
-		if err := waitServiceState(service, svc.Running, 15*time.Second); err != nil {
-			return err
-		}
-	}
-	_, err = runCommand(20*time.Second, systemTool("netsh.exe"), "advfirewall", "set", "allprofiles", "state", "on")
-	return err
-}
-
-func verifyFirewallRuntime() error {
-	state, err := captureFirewallRuntime()
-	if err != nil {
-		return err
-	}
-	if !state.WasRunning || state.StartType != mgr.StartAutomatic {
-		return errors.New("служба Windows Firewall не запущена автоматически")
-	}
-	return nil
-}
-
-func restoreFirewallRuntime(runtimeState FirewallState, snapshots []RegSnapshot) error {
-	byID := make(map[string]RegSnapshot, len(snapshots))
-	for _, snapshot := range snapshots {
-		byID[snapshot.Change.ID] = snapshot
-	}
-	var problems []error
-	for _, item := range []struct{ id, profile string }{
-		{"repair-firewall-domain", "domainprofile"},
-		{"repair-firewall-private", "privateprofile"},
-		{"repair-firewall-public", "publicprofile"},
-	} {
-		snapshot, ok := byID[item.id]
-		if !ok || !snapshot.Existed {
-			continue
-		}
-		state := "off"
-		if snapshot.DWord != 0 {
-			state = "on"
-		}
-		if _, err := runCommand(20*time.Second, systemTool("netsh.exe"), "advfirewall", "set", item.profile, "state", state); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if runtimeState.Captured {
-		manager, err := mgr.Connect()
-		if err != nil {
-			problems = append(problems, err)
-		} else {
-			service, openErr := manager.OpenService("MpsSvc")
-			if openErr != nil {
-				problems = append(problems, openErr)
-			} else {
-				config, configErr := service.Config()
-				if configErr == nil {
-					config.StartType = runtimeState.StartType
-					configErr = service.UpdateConfig(config)
-				}
-				if configErr != nil {
-					problems = append(problems, configErr)
-				}
-				status, queryErr := service.Query()
-				if queryErr != nil {
-					problems = append(problems, queryErr)
-				} else if runtimeState.WasRunning && status.State != svc.Running {
-					if startErr := service.Start(); startErr != nil {
-						problems = append(problems, startErr)
-					} else if waitErr := waitServiceState(service, svc.Running, 15*time.Second); waitErr != nil {
-						problems = append(problems, waitErr)
-					}
-				} else if !runtimeState.WasRunning && status.State == svc.Running {
-					if _, stopErr := service.Control(svc.Stop); stopErr != nil {
-						problems = append(problems, stopErr)
-					} else if waitErr := waitServiceState(service, svc.Stopped, 15*time.Second); waitErr != nil {
-						problems = append(problems, waitErr)
-					}
-				}
-				service.Close()
-			}
-			manager.Disconnect()
-		}
-	}
-	return errors.Join(problems...)
-}
-
-func waitServiceState(service *mgr.Service, desired svc.State, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		status, err := service.Query()
-		if err != nil {
-			return err
-		}
-		if status.State == desired {
-			return nil
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	return fmt.Errorf("таймаут ожидания состояния службы %d", desired)
 }
 
 func appDataDir() (string, error) {

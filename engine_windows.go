@@ -135,12 +135,6 @@ func applyProfile(profileID string) (string, error) {
 			backup.Network = networkChanges(properties)
 		}
 	}
-	if profile.RepairFirewall {
-		backup.Firewall, err = captureFirewallRuntime()
-		if err != nil {
-			return "", err
-		}
-	}
 	if err := saveBackup(&backup); err != nil {
 		return "", err
 	}
@@ -189,15 +183,6 @@ func applyProfile(profileID string) (string, error) {
 			return fail(err)
 		}
 		if err := setNetworkProperties(backup.Network, false); err != nil {
-			return fail(err)
-		}
-	}
-	if profile.RepairFirewall {
-		backup.Firewall.Applied = true
-		if err := saveBackup(&backup); err != nil {
-			return fail(err)
-		}
-		if err := repairFirewallRuntime(); err != nil {
 			return fail(err)
 		}
 	}
@@ -265,11 +250,6 @@ func verifyApplied(profile Profile, backup Backup) error {
 			}
 		}
 	}
-	if profile.RepairFirewall {
-		if err := verifyFirewallRuntime(); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -311,16 +291,6 @@ func rollbackBackup(backup *Backup) error {
 			problems = append(problems, err)
 		} else {
 			backup.Mouse.Applied = false
-			if err := saveBackup(backup); err != nil {
-				problems = append(problems, err)
-			}
-		}
-	}
-	if backup.Firewall.Applied && !registryFailed {
-		if err := restoreFirewallRuntime(backup.Firewall, backup.Registry); err != nil {
-			problems = append(problems, err)
-		} else {
-			backup.Firewall.Applied = false
 			if err := saveBackup(backup); err != nil {
 				problems = append(problems, err)
 			}
