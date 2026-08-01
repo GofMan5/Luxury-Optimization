@@ -1,0 +1,9 @@
+/dist/
+/.codex-writeup-output/
+/findings/
+/CRU/
+/ParkControl/
+/Инпутлаг/
+/GTA V Оптимизация/
+*.test
+*.prof
