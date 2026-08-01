@@ -313,7 +313,7 @@ func (m *tuiModel) renderHome(lines *[]string) {
 	}
 	status := goodStyle.Render("рекомендуемый профиль применён")
 	if len(m.audit.Findings) > 0 {
-		status = warnStyle.Render("есть настройки к применению")
+		status = warnStyle.Render("есть рекомендации")
 	}
 	card := cardStyle.Width(contentWidth - 4).Render("CPU  " + fitText(cpu, contentWidth-10) + "\nGPU  " + fitText(strings.Join(gpuNames, ", "), contentWidth-10) + "\nСТАТУС  " + status)
 	*lines = append(*lines, prefixLines(card, "  ")...)
@@ -323,7 +323,7 @@ func (m *tuiModel) renderHome(lines *[]string) {
 	m.addButton(lines, "plan-maximum", "Максимальная производительность", "отдельная power-схема + поддерживаемый Ethernet low-latency")
 	m.addButton(lines, "confirm-clean", "Очистить временные файлы", "только файлы старше 48 часов, без Prefetch и логов")
 	m.addButton(lines, "confirm-restore", "Откатить последнее", "точно восстановить сохранённые значения")
-	m.addButton(lines, "help", "Что именно делает софт", "поддержка железа, ограничения и проверка результата")
+	m.addButton(lines, "help", "Все инструменты и ограничения", "games, startup, services, network, benchmark и точный rollback")
 	m.addButton(lines, "exit", "Выйти", "закрыть без изменений")
 }
 
@@ -342,10 +342,19 @@ func (m *tuiModel) renderAudit(lines *[]string) {
 	}
 	m.addViewport(lines, content, m.height-12)
 	m.addButton(lines, "refresh-audit", "Обновить аудит", "повторить все read-only проверки")
-	if len(m.audit.Findings) > 0 {
+	if auditHasFinding(m.audit, "recommended-profile-drift") {
 		m.addButton(lines, "plan-recommended", "Открыть рекомендуемый план", "посмотреть точные изменения без применения")
 	}
 	m.addButton(lines, "home", "Назад", "главный экран")
+}
+
+func auditHasFinding(audit Audit, id string) bool {
+	for _, finding := range audit.Findings {
+		if finding.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *tuiModel) renderPlan(lines *[]string) {
@@ -405,7 +414,11 @@ func (m *tuiModel) renderHelp(lines *[]string) {
 		goodStyle.Render("РЕКОМЕНДУЕМЫЙ ПРОФИЛЬ"),
 		"Только документированные пользовательские настройки: Game Mode, отключение фоновой записи, отключение ускорения мыши и тяжёлых анимаций.", "",
 		goodStyle.Render("МАКСИМАЛЬНЫЙ ПРОФИЛЬ"),
-		"Применяет поддерживаемые CPU EPP/Boost и создаёт отдельную AC power-схему, не портит текущую. На физическом Ethernet меняет только объявленные драйвером EEE и Interrupt Moderation. Также убирает startup-delay и задержку меню. Wi-Fi, виртуальные адаптеры и неизвестные свойства пропускаются.", "",
+		"Применяет поддерживаемые CPU EPP/Boost и создаёт отдельную AC power-схему с диапазоном CPU 5–100%, не портит текущую. На физическом Ethernet меняет только объявленные драйвером EEE и Interrupt Moderation. Также убирает startup-delay и задержку меню. Wi-Fi, виртуальные адаптеры и неизвестные свойства пропускаются.", "",
+		goodStyle.Render("ИГРОВЫЕ И ПРОЦЕССНЫЕ ПРОФИЛИ"),
+		"Команда games scan находит Steam, Epic и Xbox установки. boost запускает выбранный EXE обычным токеном, временно применяет системный профиль и по явному запросу задаёт только процессу above-normal/high priority или CPU affinity.", "",
+		goodStyle.Render("АВТОЗАГРУЗКА"),
+		"startup list показывает HKCU/HKLM registry-команды. startup disable переносит только выбранную HKCU-команду в собственный backup, проверяет удаление; startup enable точно восстанавливает исходный тип и строку.", "",
 		goodStyle.Render("ЧЕГО ЗДЕСЬ НЕТ"),
 		"Нет отключения Defender/Firewall/Spectre/CFG/SEHOP, HPET/BCD-магии, фиксированных affinity masks, private GPU registry keys, разгона и загрузки mutable EXE. Такие действия либо опасны, либо не универсальны, либо не имеют честно измеримого выигрыша.", "",
 		goodStyle.Render("КАК ПРОВЕРЯТЬ ЭФФЕКТ"),

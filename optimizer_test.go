@@ -1,13 +1,20 @@
 package main
 
 import (
+	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/sys/windows"
+	"golang.org/x/sys/windows/registry"
+	"golang.org/x/sys/windows/svc"
 )
 
 func TestShippedProfilesHaveNoConflictsOrDangerousTweaks(t *testing.T) {
@@ -94,6 +101,40 @@ func TestBackupValidationRejectsChangedTarget(t *testing.T) {
 	backup.Registry[0].Change.Path = `SOFTWARE\Unexpected`
 	if err := validateBackup(backup); err == nil {
 		t.Fatal("tampered backup was accepted")
+	}
+}
+
+func TestRegistryRollbackReadback(t *testing.T) {
+	path := fmt.Sprintf(`Software\GofMan3\Optimizer\Tests\%d`, time.Now().UnixNano())
+	change := dword("rollback-readback", "test", "test", "HKCU", path, "Value", 1)
+	t.Cleanup(func() { _ = registry.DeleteKey(registry.CURRENT_USER, path) })
+	snapshot, err := snapshotRegistry(change)
+	if err != nil || snapshot.Existed {
+		t.Fatalf("bad initial snapshot: %#v err=%v", snapshot, err)
+	}
+	if err := applyRegistry(change); err != nil {
+		t.Fatal(err)
+	}
+	if err := restoreRegistry(snapshot); err != nil {
+		t.Fatal(err)
+	}
+	matches, err := registrySnapshotMatches(snapshot)
+	if err != nil || !matches {
+		t.Fatalf("registry rollback read-back failed: matches=%t err=%v", matches, err)
+	}
+}
+
+func TestBackupIDValidation(t *testing.T) {
+	if !backupIDPattern.MatchString("20260801T010203.123456789Z") {
+		t.Fatal("valid backup ID rejected")
+	}
+	for _, value := range []string{"", "../backup", "20260801T010203Z", "20260801T010203.123456789Z.json"} {
+		if backupIDPattern.MatchString(value) {
+			t.Fatalf("invalid backup ID accepted: %q", value)
+		}
+	}
+	if err := run([]string{"restore", "--id", "../backup", "--yes"}); err == nil {
+		t.Fatal("invalid restore ID reached the restore path")
 	}
 }
 
@@ -305,6 +346,28 @@ func TestInternalResultArgumentsAreRemoved(t *testing.T) {
 	}
 }
 
+func TestCommandsRejectUnexpectedPositionals(t *testing.T) {
+	cases := [][]string{
+		{"audit", "extra"},
+		{"plan", "extra"},
+		{"apply", "extra", "--yes"},
+		{"restore", "extra", "--yes"},
+		{"clean", "extra", "--yes"},
+		{"startup", "list", "extra"},
+		{"startup", "disable", "--name", "test", "--yes", "extra"},
+		{"games", "scan", "extra"},
+		{"games", "remove", "--id", "0123456789ab", "--yes", "extra"},
+		{"services", "list", "extra"},
+		{"network", "interfaces", "extra"},
+		{"backups", "list", "extra"},
+	}
+	for _, args := range cases {
+		if err := run(args); err == nil || !strings.Contains(err.Error(), "аргумент") {
+			t.Fatalf("unexpected positional reached command %v: %v", args, err)
+		}
+	}
+}
+
 func TestParentProcessSIDIsBoundToSameExecutable(t *testing.T) {
 	expected, err := currentUserSID()
 	if err != nil {
@@ -397,5 +460,195 @@ func TestValidateGameExecutable(t *testing.T) {
 				t.Fatalf("invalid game path accepted: %s", value)
 			}
 		})
+	}
+}
+
+func TestProcessTuningInputValidation(t *testing.T) {
+	for _, value := range []string{"normal", "above-normal", "high"} {
+		if _, err := processPriorityClass(value); err != nil {
+			t.Fatalf("valid priority %q rejected: %v", value, err)
+		}
+	}
+	if _, err := processPriorityClass("realtime"); err == nil {
+		t.Fatal("unsafe realtime priority accepted")
+	}
+	if _, err := parseAffinity("0"); err == nil {
+		t.Fatal("zero affinity accepted")
+	}
+	if mask, err := parseAffinity("0x1"); err != nil || mask != 1 {
+		t.Fatalf("valid affinity rejected: mask=%X err=%v", mask, err)
+	}
+}
+
+func TestTuneChildProcessReadback(t *testing.T) {
+	command := exec.Command(systemTool("ping.exe"), "-n", "30", "127.0.0.1")
+	command.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = command.Process.Kill()
+		_ = command.Wait()
+	}()
+	if err := tuneGameProcess(uint32(command.Process.Pid), "above-normal", 1); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStartupBackupRoundTrip(t *testing.T) {
+	for _, kind := range []uint32{registry.SZ, registry.EXPAND_SZ} {
+		encoded := encodeStartupBackup(kind, `%LOCALAPPDATA%\Game Launcher.exe --silent`)
+		actualKind, command, err := decodeStartupBackup(encoded)
+		if err != nil || actualKind != kind || command != encoded[1] {
+			t.Fatalf("startup backup round-trip failed: kind=%d command=%q err=%v", actualKind, command, err)
+		}
+	}
+	if _, _, err := decodeStartupBackup([]string{"4", "binary"}); err == nil {
+		t.Fatal("unsupported startup type accepted")
+	}
+	if err := validateStartupName("bad\nname"); err == nil {
+		t.Fatal("control character accepted in startup name")
+	}
+}
+
+func TestSteamLibraryDiscovery(t *testing.T) {
+	root := t.TempDir()
+	steamApps := filepath.Join(root, "steamapps")
+	gameDir := filepath.Join(steamApps, "common", "Test Game", "Binaries", "Win64")
+	if err := os.MkdirAll(gameDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `"AppState"
+{
+  "appid" "42"
+  "name" "Test Game"
+  "installdir" "Test Game"
+}`
+	if err := os.WriteFile(filepath.Join(steamApps, "appmanifest_42.acf"), []byte(manifest), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(gameDir, "TestGame.exe")
+	if err := os.WriteFile(executable, []byte("MZfixture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	games, warnings := scanSteamRoot(root)
+	if len(warnings) != 0 || len(games) != 1 || games[0].ID != "42" || len(games[0].Executables) != 1 {
+		t.Fatalf("bad Steam discovery: games=%#v warnings=%#v", games, warnings)
+	}
+}
+
+func TestSteamManifestCannotEscapeLibrary(t *testing.T) {
+	root := t.TempDir()
+	steamApps := filepath.Join(root, "steamapps")
+	if err := os.MkdirAll(steamApps, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `"AppState"
+{
+  "appid" "666"
+  "name" "Escape"
+  "installdir" "..\\escape"
+}`
+	if err := os.WriteFile(filepath.Join(steamApps, "appmanifest_666.acf"), []byte(manifest), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	games, warnings := scanSteamRoot(root)
+	if len(games) != 0 || len(warnings) != 1 {
+		t.Fatalf("traversal manifest accepted: games=%#v warnings=%#v", games, warnings)
+	}
+	if pathWithin(filepath.Join(root, "game"), filepath.Join(root, "game-escape")) {
+		t.Fatal("sibling path treated as child")
+	}
+}
+
+func TestSavedGamesAreAtomicAndValidated(t *testing.T) {
+	root := t.TempDir()
+	gamePath := filepath.Join(root, "game.exe")
+	if err := os.WriteFile(gamePath, []byte("MZfixture"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storePath := filepath.Join(root, "state", "games.json")
+	store := SavedGames{Version: gameProfilesVersion, Games: []SavedGame{{
+		ID: "0123456789ab", Name: "Test Game", Path: gamePath, Profile: profileMaximum, Priority: "above-normal", Affinity: 1, Args: []string{"-windowed"},
+	}}}
+	if err := saveSavedGames(storePath, store); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := loadSavedGames(storePath)
+	if err != nil || len(loaded.Games) != 1 || loaded.Games[0].Args[0] != "-windowed" {
+		t.Fatalf("saved game was not restored: %#v err=%v", loaded, err)
+	}
+	loaded.Games[0].Name = "Updated"
+	if err := saveSavedGames(storePath, loaded); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err = loadSavedGames(storePath)
+	if err != nil || loaded.Games[0].Name != "Updated" {
+		t.Fatalf("atomic replacement failed: %#v err=%v", loaded, err)
+	}
+	loaded.Games[0].Priority = "realtime"
+	if err := saveSavedGames(storePath, loaded); err == nil {
+		t.Fatal("unsafe saved priority accepted")
+	}
+}
+
+func TestTCPLatencyUsesSuccessfulSamples(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 5; i++ {
+			connection, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			connection.Close()
+		}
+	}()
+	report, err := measureTCPLatency(listener.Addr().String(), 5, time.Second)
+	if err != nil || report.Succeeded != 5 || report.Failed != 0 || report.P95MS < report.MedianMS {
+		t.Fatalf("bad local latency report: %#v err=%v", report, err)
+	}
+	<-done
+}
+
+func TestServiceLabelsAreStable(t *testing.T) {
+	if serviceState(svc.Running) != "running" || serviceState(svc.Stopped) != "stopped" {
+		t.Fatal("service states are mislabeled")
+	}
+	if serviceStartType(windows.SERVICE_AUTO_START) != "automatic" || serviceStartType(windows.SERVICE_DISABLED) != "disabled" {
+		t.Fatal("service start types are mislabeled")
+	}
+}
+
+func TestBenchmarkComparisonRejectsNoiseAndFindsGain(t *testing.T) {
+	before := BenchmarkSet{Label: "before", Runs: []BenchmarkRun{
+		{AverageFPS: 100, Low1FPS: 70, P95FrameMS: 12},
+		{AverageFPS: 101, Low1FPS: 71, P95FrameMS: 11.8},
+		{AverageFPS: 99, Low1FPS: 69, P95FrameMS: 12.2},
+	}}
+	after := BenchmarkSet{Label: "after", Runs: []BenchmarkRun{
+		{AverageFPS: 110, Low1FPS: 80, P95FrameMS: 10},
+		{AverageFPS: 111, Low1FPS: 81, P95FrameMS: 9.8},
+		{AverageFPS: 109, Low1FPS: 79, P95FrameMS: 10.2},
+	}}
+	comparison := compareBenchmarks(before, after)
+	if comparison.Verdict != "measurably_improved" || !comparison.AverageFPS.Meaningful || !comparison.Low1FPS.Meaningful || !comparison.P95FrameMS.Meaningful {
+		t.Fatalf("measurable gain missed: %#v", comparison)
+	}
+	nearNoise := compareBenchmarks(before, BenchmarkSet{Label: "same", Runs: []BenchmarkRun{
+		{AverageFPS: 101, Low1FPS: 70.5, P95FrameMS: 11.9},
+		{AverageFPS: 100, Low1FPS: 70, P95FrameMS: 12},
+		{AverageFPS: 100.5, Low1FPS: 69.5, P95FrameMS: 12.1},
+	}})
+	if nearNoise.Verdict != "within_run_to_run_variance" {
+		t.Fatalf("noise reported as gain: %#v", nearNoise)
+	}
+	if err := validateBenchmarkSet(BenchmarkSet{Runs: before.Runs[:2]}); err == nil {
+		t.Fatal("two-run benchmark accepted")
 	}
 }

@@ -21,6 +21,7 @@ func collectAudit() Audit {
 }
 
 func detectOptimizationFindings(audit *Audit) []Finding {
+	var findings []Finding
 	profile := recommendedProfile()
 	changed := 0
 	for _, change := range profile.Changes {
@@ -33,13 +34,28 @@ func detectOptimizationFindings(audit *Audit) []Finding {
 			changed++
 		}
 	}
-	if changed == 0 {
-		return nil
+	if changed > 0 {
+		findings = append(findings, Finding{
+			ID:       "recommended-profile-drift",
+			Title:    "Рекомендуемый игровой профиль применён не полностью",
+			Evidence: fmt.Sprintf("Отличаются %d из %d настроек", changed, len(profile.Changes)),
+			Action:   "Открыть точный план рекомендуемого профиля.",
+		})
 	}
-	return []Finding{{
-		ID:       "recommended-profile-drift",
-		Title:    "Рекомендуемый игровой профиль применён не полностью",
-		Evidence: fmt.Sprintf("Отличаются %d из %d настроек", changed, len(profile.Changes)),
-		Action:   "Открыть точный план рекомендуемого профиля.",
-	}}
+	startup := listStartupEntries()
+	present := 0
+	for _, entry := range startup.Entries {
+		if entry.State == "present" {
+			present++
+		}
+	}
+	if present >= 10 {
+		findings = append(findings, Finding{
+			ID:       "startup-load",
+			Title:    "Много программ зарегистрировано в автозагрузке",
+			Evidence: fmt.Sprintf("Найдено %d registry startup-команд", present),
+			Action:   "Проверить startup list и отключить только ненужные HKCU-команды.",
+		})
+	}
+	return findings
 }

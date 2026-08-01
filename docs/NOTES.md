@@ -12,11 +12,19 @@ The project optimizes gaming responsiveness, frametime stability and general Win
 | Game DVR capture off | Removes background capture work when unused | Only capture settings are changed |
 | Mouse acceleration off | Predictable raw pointer response for games | Live state is captured, applied through SPI and restored |
 | Separate performance power plan | Avoids mutating the user's original plan | New GUID, read-back verification, delete on rollback |
+| CPU minimum 5%, maximum 100% | Preserves fast boost without pinning idle clocks at 100% | AC-only temporary plan; EPP/boost remain capability checked |
 | CPU EPP 0 / aggressive boost | Can improve AC responsiveness | Applied only when the platform exposes each setting |
 | PCIe/USB AC power saving off | Avoids wake latency under the maximum profile | AC only; maximum profile warns about heat/power |
 | Ethernet EEE / Interrupt Moderation off | Can reduce latency | Physical Ethernet only; driver must advertise the keyword |
 | Startup/menu delay off | Improves perceived desktop responsiveness | User values are backed up and restored |
 | Temporary game boost | Keeps the maximum profile scoped to one play session | Game stays non-elevated; session lock, exact backup and automatic restore |
+| Per-game process priority | Useful for a measured CPU-contention case | Explicit only, process-scoped, native read-back; realtime is rejected |
+| HKCU startup manager | Removing unused launchers lowers persistent background load | Exact string type/value backup; no automatic disabling and no HKLM mutation |
+| Game library discovery | Reduces setup friction without installing a service | Read-only Steam/Epic/Xbox scan; every selected EXE is revalidated |
+| Service inventory | Makes background activity visible | Minimal-query SCM handles; no start-mode mutation |
+| TCP latency baseline | Detects reachability, jitter and tail-latency changes | Explicit endpoint, bounded count/timeouts; does not claim UDP/bufferbloat |
+| Benchmark comparison | Separates real gains from one-run noise | Minimum three runs, medians and MAD-derived threshold |
+| Restore center | Makes rollback state inspectable without weakening backup ACL | Admin-only list, seal validation and exact ID restore |
 
 ## Conditional or benchmark first
 
@@ -27,6 +35,7 @@ The project optimizes gaming responsiveness, frametime stability and general Win
 | MSI/IRQ affinity | Hardware topology and driver dependent; keep outside universal profiles |
 | RSS/RSC/offloads | Throughput/CPU/latency trade-off; do not apply globally |
 | Process priority changes | Games and anti-cheat may override them; require per-game evidence |
+| CPU affinity | Hybrid topology and anti-cheat behavior vary; explicit per-game mask only |
 
 ## Rejected
 
@@ -38,6 +47,8 @@ The project optimizes gaming responsiveness, frametime stability and general Win
 - Fixed thread counts, affinity masks and timer-resolution daemons.
 - Private NVIDIA/AMD/Intel registry keys.
 - Disabling Windows Update, scheduled maintenance or core services.
+- Mass service start-mode changes, device disabling and forced MSI/IRQ affinity.
+- IFEO CPU/I/O/page priority for system processes or persistent game entries; live process APIs cover the scoped case.
 - Mutable runtime downloads or bundled unsigned tools.
 
 ## Review checklist

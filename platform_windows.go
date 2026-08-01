@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -27,6 +28,7 @@ var guidPattern = regexp.MustCompile(`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-
 
 var maximumPowerSettings = []PowerSetting{
 	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "bc5038f7-23e0-4960-96da-33abaf5935ec", Value: 100, Name: "Максимальное состояние CPU от сети"},
+	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "893dee8e-2bef-41e0-89c6-b55d0929964c", Value: 5, Name: "Минимальное состояние CPU 5% от сети"},
 	{Subgroup: "501a4d13-42af-4429-9fd1-a8218c268e20", Setting: "ee12f906-d277-404b-b6da-e5fa1a576df5", Value: 0, Name: "PCIe Link State Power Management off"},
 	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", Value: 0, Name: "USB selective suspend off"},
 }
@@ -91,8 +93,19 @@ func programDataDirectory() (string, error) {
 	return filepath.Clean(path), nil
 }
 
-func localTempDirectory() (string, error) {
+func localAppDataDirectory() (string, error) {
 	path, err := windows.KnownFolderPath(windows.FOLDERID_LocalAppData, windows.KF_FLAG_DEFAULT)
+	if err != nil {
+		return "", err
+	}
+	if !filepath.IsAbs(path) {
+		return "", errors.New("LocalAppData directory is not absolute")
+	}
+	return filepath.Clean(path), nil
+}
+
+func localTempDirectory() (string, error) {
+	path, err := localAppDataDirectory()
 	if err != nil {
 		return "", err
 	}
@@ -417,7 +430,7 @@ func protectResultFile(file *os.File) error {
 	if err != nil {
 		return err
 	}
-	descriptor, err := windows.SecurityDescriptorFromString(fmt.Sprintf(`D:P(A;;GRGW;;;%s)(A;;FA;;;SY)(A;;FA;;;BA)`, sid))
+	descriptor, err := windows.SecurityDescriptorFromString(fmt.Sprintf(`D:P(A;;FA;;;%s)(A;;FA;;;SY)(A;;FA;;;BA)`, sid))
 	if err != nil {
 		return err
 	}
@@ -425,7 +438,31 @@ func protectResultFile(file *os.File) error {
 	if err != nil {
 		return err
 	}
-	return windows.SetSecurityInfo(windows.Handle(file.Fd()), windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil)
+	var original windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(windows.Handle(file.Fd()), &original); err != nil {
+		return fmt.Errorf("query ACL source: %w", err)
+	}
+	pointer, err := windows.UTF16PtrFromString(file.Name())
+	if err != nil {
+		return err
+	}
+	handle, err := windows.CreateFile(pointer, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return fmt.Errorf("open ACL target: %w", err)
+	}
+	defer windows.CloseHandle(handle)
+	var secured windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(handle, &secured); err != nil {
+		return fmt.Errorf("query ACL target: %w", err)
+	}
+	if secured.FileAttributes&(windows.FILE_ATTRIBUTE_REPARSE_POINT|windows.FILE_ATTRIBUTE_DIRECTORY) != 0 ||
+		secured.VolumeSerialNumber != original.VolumeSerialNumber || secured.FileIndexHigh != original.FileIndexHigh || secured.FileIndexLow != original.FileIndexLow {
+		return errors.New("ACL target identity mismatch")
+	}
+	if err := windows.SetSecurityInfo(handle, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil); err != nil {
+		return fmt.Errorf("set ACL: %w", err)
+	}
+	return nil
 }
 
 func writeElevatedResult(path string, parentPID uint32, operationErr error) error {
@@ -489,9 +526,13 @@ func acquireBoostSessionLock() (func(), error) {
 	return acquireNamedMutex(`Local\GofMan3Optimizer-BoostSession-v1`, "другая игровая boost-сессия уже выполняется")
 }
 
+func acquireGameProfilesLock() (func(), error) {
+	return acquireNamedMutex(`Local\GofMan3Optimizer-GameProfiles-v1`, "игровые профили уже изменяются другим процессом")
+}
+
 func acquireNamedMutex(value, busyMessage string) (func(), error) {
 	name, _ := windows.UTF16PtrFromString(value)
-	handle, err := windows.CreateMutex(nil, true, name)
+	handle, err := windows.CreateMutex(nil, false, name)
 	if errors.Is(err, windows.ERROR_ALREADY_EXISTS) {
 		if handle != 0 {
 			windows.CloseHandle(handle)
@@ -502,7 +543,6 @@ func acquireNamedMutex(value, busyMessage string) (func(), error) {
 		return nil, err
 	}
 	return func() {
-		_ = windows.ReleaseMutex(handle)
 		_ = windows.CloseHandle(handle)
 	}, nil
 }
@@ -638,6 +678,13 @@ func restorePowerPlan(snapshot PowerSnapshot) error {
 		if _, err := runCommand(15*time.Second, systemTool("powercfg.exe"), "/setactive", snapshot.PreviousGUID); err != nil {
 			return err
 		}
+		active, err := activePowerGUID()
+		if err != nil || !strings.EqualFold(active, snapshot.PreviousGUID) {
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("после отката активна схема %s вместо %s", active, snapshot.PreviousGUID)
+		}
 	}
 	if snapshot.CreatedGUID != "" {
 		exists, err := powerSchemeExists(snapshot.CreatedGUID)
@@ -647,6 +694,12 @@ func restorePowerPlan(snapshot PowerSnapshot) error {
 		if exists {
 			if _, err := runCommand(15*time.Second, systemTool("powercfg.exe"), "/delete", snapshot.CreatedGUID); err != nil {
 				return err
+			}
+			if exists, err := powerSchemeExists(snapshot.CreatedGUID); err != nil || exists {
+				if err != nil {
+					return err
+				}
+				return errors.New("временная схема питания осталась после отката")
 			}
 		}
 	}
@@ -710,6 +763,24 @@ func networkPropertyNeedsChange(values []string) bool {
 		}
 	}
 	return false
+}
+
+func verifyRestoredNetwork(expected []NetProperty) error {
+	current, err := queryNetworkProperties()
+	if err != nil {
+		return err
+	}
+	lookup := make(map[string][]string, len(current))
+	for _, property := range current {
+		lookup[strings.ToLower(property.InterfaceGUID)+"|"+strings.ToLower(property.Keyword)] = property.Values
+	}
+	for _, property := range expected {
+		values, ok := lookup[strings.ToLower(property.InterfaceGUID)+"|"+strings.ToLower(property.Keyword)]
+		if !ok || !slices.Equal(values, property.Values) {
+			return fmt.Errorf("ethernet-параметр %s/%s не совпал с backup после отката", property.AdapterName, property.Keyword)
+		}
+	}
+	return nil
 }
 
 func setNetworkProperties(properties []NetProperty, restore bool) error {

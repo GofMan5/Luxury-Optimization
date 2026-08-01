@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"golang.org/x/sys/windows/registry"
@@ -156,6 +158,36 @@ func restoreRegistry(snapshot RegSnapshot) error {
 		return key.SetBinaryValue(snapshot.Change.Name, snapshot.Binary)
 	default:
 		return fmt.Errorf("%s: невозможно восстановить тип %d", snapshot.Change.ID, snapshot.Kind)
+	}
+}
+
+func registrySnapshotMatches(expected RegSnapshot) (bool, error) {
+	actual, err := snapshotRegistry(expected.Change)
+	if err != nil {
+		return false, err
+	}
+	if actual.Existed != expected.Existed {
+		return false, nil
+	}
+	if !expected.Existed {
+		return true, nil
+	}
+	if actual.Kind != expected.Kind {
+		return false, nil
+	}
+	switch expected.Kind {
+	case registry.DWORD:
+		return actual.DWord == expected.DWord, nil
+	case registry.QWORD:
+		return actual.QWord == expected.QWord, nil
+	case registry.SZ, registry.EXPAND_SZ:
+		return actual.String == expected.String, nil
+	case registry.MULTI_SZ:
+		return slices.Equal(actual.Strings, expected.Strings), nil
+	case registry.BINARY:
+		return bytes.Equal(actual.Binary, expected.Binary), nil
+	default:
+		return false, fmt.Errorf("неподдерживаемый тип snapshot %d", expected.Kind)
 	}
 }
 

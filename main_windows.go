@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var version = "3.1.0-dev"
+var version = "3.2.0-dev"
 
 func main() {
 	args, resultPath := stripResultFile(os.Args[1:])
@@ -70,6 +70,18 @@ func run(args []string) error {
 		return boostCommand(args[1:])
 	case "clean":
 		return cleanCommand(args[1:])
+	case "startup":
+		return startupCommand(args[1:])
+	case "games":
+		return gamesCommand(args[1:])
+	case "services":
+		return servicesCommand(args[1:])
+	case "network":
+		return networkCommand(args[1:])
+	case "benchmark":
+		return benchmarkCommand(args[1:])
+	case "backups":
+		return backupsCommand(args[1:])
 	case "version", "--version", "-v":
 		fmt.Println("GofMan3 Optimizer", version)
 		return nil
@@ -87,6 +99,9 @@ func auditCommand(args []string) error {
 	jsonOnly := set.Bool("json", false, "вывести JSON")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы audit")
 	}
 	audit := collectAudit()
 	data, err := json.MarshalIndent(audit, "", "  ")
@@ -114,6 +129,9 @@ func planCommand(args []string) error {
 	if err := set.Parse(args); err != nil {
 		return err
 	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы plan")
+	}
 	plan, err := buildPlan(*profileID)
 	if err != nil {
 		return err
@@ -139,6 +157,9 @@ func applyCommand(args []string) error {
 	boostSession := set.Bool("boost-session", false, "internal: активная игровая сессия")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы apply")
 	}
 	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
 		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
@@ -183,13 +204,24 @@ func restoreCommand(args []string) error {
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
 	boostSession := set.Bool("boost-session", false, "internal: активная игровая сессия")
+	backupID := set.String("id", "", "ID из backups list")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы restore")
 	}
 	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
 		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
 	}
-	if !*yes && !confirm("Восстановить последнюю применённую резервную копию?") {
+	if *backupID != "" && !backupIDPattern.MatchString(*backupID) {
+		return errors.New("неверный backup ID")
+	}
+	question := "Восстановить последнюю применённую резервную копию?"
+	if *backupID != "" {
+		question = "Восстановить резервную копию " + *backupID + "?"
+	}
+	if !*yes && !confirm(question) {
 		return errors.New("операция отменена")
 	}
 	requestSID := ""
@@ -210,9 +242,19 @@ func restoreCommand(args []string) error {
 		}
 	}
 	if !isAdministrator() {
-		return runElevatedAndWait([]string{"restore", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
+		elevatedArgs := []string{"restore", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())}
+		if *backupID != "" {
+			elevatedArgs = append(elevatedArgs, "--id", *backupID)
+		}
+		return runElevatedAndWait(elevatedArgs)
 	}
-	path, err := restoreLatest(requestSID, *boostSession)
+	var path string
+	var err error
+	if *backupID == "" {
+		path, err = restoreLatest(requestSID, *boostSession)
+	} else {
+		path, err = restoreSelected(requestSID, *backupID, *boostSession)
+	}
 	if err != nil {
 		return err
 	}
@@ -229,6 +271,9 @@ func cleanCommand(args []string) error {
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы clean")
 	}
 	if !*yes && !confirm("Удалить временные файлы старше "+strconv.Itoa(*days)+" дней?") {
 		return errors.New("операция отменена")
@@ -293,9 +338,17 @@ func printHelp() {
   plan --profile recommended|maximum
                                         точный план без изменений
   apply --profile recommended|maximum  применить с backup и проверкой
-  boost --game C:\Games\Game.exe --profile maximum -- [аргументы игры]
+  boost --game C:\Games\Game.exe --profile maximum [--priority above-normal] [--affinity 0xFF] -- [аргументы игры]
                                         применить профиль только на время игры
-  restore                              откатить последнюю операцию
+  startup list [--json]                показать registry-автозагрузку
+  startup disable|enable --name NAME   обратимо управлять HKCU Run
+  games scan [--json]                  найти Steam, Epic и Xbox игры
+  games add|list|run|remove            сохранить и запускать per-game профили
+  services list [--json]               read-only список служб Windows
+  network interfaces|test              интерфейсы или TCP latency/jitter
+  benchmark template|compare           сравнить FPS/1% low/p95 frametime
+  backups list [--json]                sealed restore center (нужен admin)
+  restore [--id BACKUP_ID]             откатить последнюю или выбранную операцию
   clean --days 2                       безопасно очистить старые temp-файлы
   version                              версия
 `)

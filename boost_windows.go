@@ -18,13 +18,22 @@ func boostCommand(args []string) error {
 	set := flag.NewFlagSet("boost", flag.ContinueOnError)
 	game := set.String("game", "", "абсолютный путь к EXE игры")
 	profile := set.String("profile", profileMaximum, "recommended или maximum")
+	priority := set.String("priority", "normal", "normal, above-normal или high")
+	affinityText := set.String("affinity", "", "необязательная CPU mask, например 0xFF")
 	if err := set.Parse(args); err != nil {
 		return err
 	}
-	return runBoostSession(*game, *profile, set.Args())
+	affinity, err := parseAffinity(*affinityText)
+	if err != nil {
+		return err
+	}
+	if _, err := processPriorityClass(*priority); err != nil {
+		return err
+	}
+	return runBoostSession(*game, *profile, *priority, affinity, set.Args())
 }
 
-func runBoostSession(game, profile string, gameArgs []string) (err error) {
+func runBoostSession(game, profile, priority string, affinity uintptr, gameArgs []string) (err error) {
 	if isAdministrator() {
 		return errors.New("boost запускается без прав администратора, чтобы игра не получила elevation")
 	}
@@ -63,6 +72,10 @@ func runBoostSession(game, profile string, gameArgs []string) (err error) {
 	if err := command.Start(); err != nil {
 		return fmt.Errorf("запуск игры: %w", err)
 	}
+	tuningErr := tuneGameProcess(uint32(command.Process.Pid), priority, affinity)
+	if tuningErr != nil {
+		fmt.Fprintln(os.Stderr, "Предупреждение: настройка процесса:", tuningErr)
+	}
 	fmt.Println("Boost-профиль применён. Ожидаю завершения игры; Ctrl+C завершит boost-сессию.")
 	wait := make(chan error, 1)
 	go func() { wait <- command.Wait() }()
@@ -74,7 +87,7 @@ func runBoostSession(game, profile string, gameArgs []string) (err error) {
 	case <-ctx.Done():
 		fmt.Println("Получен Ctrl+C, восстанавливаю исходные настройки.")
 	}
-	return err
+	return errors.Join(err, tuningErr)
 }
 
 func validateGameExecutable(path string) (string, error) {
