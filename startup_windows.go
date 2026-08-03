@@ -54,10 +54,10 @@ func startupCommand(args []string) error {
 			return nil
 		}
 		for _, entry := range report.Entries {
-			fmt.Printf("[%s] %s (%s) — %s\n", entry.Scope, entry.Name, entry.State, entry.Command)
+			fmt.Printf("[%s] %s (%s) — %s\n", displayText(entry.Scope), displayText(entry.Name), displayText(entry.State), displayText(entry.Command))
 		}
 		for _, warning := range report.Warnings {
-			fmt.Println("Предупреждение:", warning)
+			fmt.Println("Предупреждение:", displayText(warning))
 		}
 		return nil
 	}
@@ -97,7 +97,7 @@ func startupCommand(args []string) error {
 }
 
 func listStartupEntries() StartupReport {
-	report := StartupReport{}
+	report := StartupReport{Entries: []StartupEntry{}}
 	readStartupKey(&report, registry.CURRENT_USER, startupRunPath, 0, "HKCU", "present")
 	readStartupKey(&report, registry.LOCAL_MACHINE, startupRunPath, registry.WOW64_64KEY, "HKLM64", "present")
 	readStartupKey(&report, registry.LOCAL_MACHINE, startupRunPath, registry.WOW64_32KEY, "HKLM32", "present")
@@ -111,7 +111,7 @@ func listStartupEntries() StartupReport {
 			values, _, readErr := key.GetStringsValue(name)
 			_, command, decodeErr := decodeStartupBackup(values)
 			if readErr == nil && decodeErr == nil {
-				report.Entries = append(report.Entries, StartupEntry{Scope: "HKCU", Name: name, Command: command, State: "disabled_by_gofman3"})
+				report.Entries = append(report.Entries, StartupEntry{Scope: "HKCU", Name: name, Command: command, State: "disabled_by_luxury_optimization"})
 			} else {
 				report.Warnings = append(report.Warnings, "disabled startup "+name+": повреждён backup")
 			}

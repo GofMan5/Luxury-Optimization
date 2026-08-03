@@ -1,27 +1,27 @@
 # Roadmap
 
-The target is BoosterX-class coverage with fewer permanent tweaks: measure first, use Windows-native controls, and keep every mutation bounded, verified and reversible.
+The target is broad gaming-optimization coverage with fewer permanent tweaks and stronger evidence.
 
 ## Current
 
-- Temporary game boost: elevated profile apply, non-elevated direct EXE launch, process monitoring and automatic restore.
-- Steam, Epic and fixed-drive Xbox discovery.
-- Saved per-game profiles with process-scoped priority/affinity and arguments.
-- Reversible HKCU startup manager and startup-load audit.
-- Read-only service/interface inventory, TCP latency baseline and multi-run benchmark comparison.
-- Admin-only sealed backup inventory and exact backup restore.
+- Capability-aware Windows and Linux audit and plans.
+- Reversible Windows recommended/maximum profiles and sealed restore center.
+- Session game boost on Windows and Linux with platform-native process controls.
+- Steam discovery on both platforms; Epic/Xbox discovery on Windows.
+- Atomic per-game profiles, startup management, service/network inventory and benchmark comparison.
+- Opt-in verified updates from GitHub Releases.
 
 ## Next vertical slices
 
-1. Launch history and measured per-game before/after results.
-2. Background-load advisor that correlates services/startup/processes without bulk disabling.
-3. UDP/bufferbloat and storage diagnostics with stable measurement protocols.
-4. Automated capture import for FPS, 1% lows and frametime variance.
-5. Mouse-first restore-center UI over the sealed backup inventory.
+1. Import CapFrameX/MangoHud captures into the existing median/MAD comparison.
+2. Per-game launch history with explicit before/after result attachment.
+3. Background-load advisor that correlates processes, startup and services without bulk disabling.
+4. UDP/bufferbloat and storage diagnostics with stable, documented protocols.
+5. Linux desktop/TUI parity only where it reuses the existing capability contract.
 
 ## Excluded
 
-- Defender, Firewall, Windows Update, mitigations or core-service disabling.
-- BCD/HPET/dynamic-tick recipes and timer-resolution daemons.
-- Memory cleaners, fixed affinity/IRQ masks and private GPU registry values.
-- Universal HAGS, MSI, offload or process-priority changes without per-PC benchmark evidence.
+- Security-control, update or core-service disabling.
+- BCD/HPET/timer daemons, memory cleaners and cache-purge loops.
+- Universal HAGS, MSI, IRQ, governor, offload or priority changes without machine-specific evidence.
+- Private driver keys, opaque profile imports and bundled third-party executables.

@@ -4,7 +4,7 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 
 ## Product coverage
 
-| BoosterX capability | GofMan3 implementation | Status |
+| BoosterX capability | Luxury Optimization implementation | Status |
 |---|---|---|
 | System analysis and boost potential | `audit`, exact `plan`, hardware and startup findings | Covered |
 | Preview before apply | Current → desired value for every target | Covered |
@@ -14,16 +14,16 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | Power settings | Separate temporary AC plan, 5–100% CPU, optional EPP/boost read-back | Covered |
 | GameModeX / game profiles | `boost`, `games add/list/run/remove` | Covered without daemon |
 | ProcessX priority and affinity | Live process API, explicit per-game values, read-back | Covered without IFEO |
-| Steam/Epic/Xbox discovery | `games scan` | Covered |
+| Steam/Epic/Xbox discovery | `games scan`; Linux supports Steam native/Flatpak | Covered by platform |
 | Startup manager | HKCU list/disable/enable with exact backup | Covered; HKLM remains read-only |
 | GameReadyX | `audit` plus profile drift and capability plan | Partial; checks stay transparent |
 | Tweak explanation | README, exact plan, NOTES and this matrix | Covered |
 | Questionnaire | Automatic audit plus deterministic recommended/maximum plans | Replaced; no ambiguous bulk answers |
-| Service groups/manager | Native read-only SCM inventory and filters | Inspection covered; mutation rejected |
+| Service groups/manager | Read-only Windows SCM and Linux systemd inventory | Inspection covered; mutation rejected |
 | APPX deep removal | Outside gaming performance scope | Excluded |
 | NVIDIA panel/profile import | Driver UI remains authoritative | Private/undocumented settings excluded |
 | UDP/bufferbloat and scheduler-latency tests | TCP median/p95/jitter baseline implemented | UDP/bufferbloat pending stable protocol |
-| Before/after comparison | Median FPS, 1% low, p95 frametime and noise verdict | Covered for imported runs |
+| Before/after comparison | Portable median FPS, 1% low, p95 frametime and noise verdict | Covered for imported runs |
 | Device Control / MSI / IRQ | Hardware-specific and restart-sensitive | Benchmark first |
 | Fixes unrelated to optimization | Outside product scope | Excluded |
 | AI-generated/imported arbitrary tweaks | No trusted rollback contract | Excluded |

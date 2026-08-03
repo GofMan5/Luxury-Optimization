@@ -138,14 +138,22 @@ type Finding struct {
 	Action   string `json:"action"`
 }
 
+type Capability struct {
+	ID        string `json:"id"`
+	Available bool   `json:"available"`
+	Mode      string `json:"mode"`
+	Detail    string `json:"detail"`
+}
+
 type Audit struct {
-	GeneratedAt     time.Time `json:"generated_at"`
-	Version         string    `json:"version"`
-	Hardware        Hardware  `json:"hardware"`
-	Administrator   bool      `json:"administrator"`
-	ActivePowerGUID string    `json:"active_power_guid,omitempty"`
-	Findings        []Finding `json:"optimization_findings"`
-	Warnings        []string  `json:"warnings,omitempty"`
+	GeneratedAt     time.Time    `json:"generated_at"`
+	Version         string       `json:"version"`
+	Hardware        Hardware     `json:"hardware"`
+	Administrator   bool         `json:"administrator"`
+	ActivePowerGUID string       `json:"active_power_guid,omitempty"`
+	Capabilities    []Capability `json:"capabilities,omitempty"`
+	Findings        []Finding    `json:"optimization_findings"`
+	Warnings        []string     `json:"warnings,omitempty"`
 }
 
 type OperationResult struct {

@@ -60,7 +60,7 @@ func networkCommand(args []string) error {
 			return nil
 		}
 		for _, item := range interfaces {
-			fmt.Printf("%d  %s  MTU=%d  %s\n  %s\n", item.Index, item.Name, item.MTU, item.Flags, strings.Join(item.Addresses, ", "))
+			fmt.Printf("%d  %s  MTU=%d  %s\n  %s\n", item.Index, displayText(item.Name), item.MTU, displayText(item.Flags), displayText(strings.Join(item.Addresses, ", ")))
 		}
 		return nil
 	}
@@ -90,7 +90,7 @@ func networkCommand(args []string) error {
 		fmt.Println(string(data))
 		return nil
 	}
-	fmt.Printf("TCP %s: median %.2f ms, p95 %.2f ms, jitter %.2f ms, failures %d/%d\n", report.Address, report.MedianMS, report.P95MS, report.JitterMS, report.Failed, report.Attempts)
+	fmt.Printf("TCP %s: median %.2f ms, p95 %.2f ms, jitter %.2f ms, failures %d/%d\n", displayText(report.Address), report.MedianMS, report.P95MS, report.JitterMS, report.Failed, report.Attempts)
 	return nil
 }
 
@@ -123,6 +123,9 @@ func measureTCPLatency(address string, count int, timeout time.Duration) (Latenc
 	}
 	if count < 3 || count > 100 || timeout < 100*time.Millisecond || timeout > 10*time.Second {
 		return LatencyReport{}, errors.New("count должен быть 3–100, timeout — 100ms–10s")
+	}
+	if time.Duration(count)*timeout > 5*time.Minute {
+		return LatencyReport{}, errors.New("максимальная длительность network test ограничена пятью минутами")
 	}
 	report := LatencyReport{Address: address, Attempts: count}
 	for i := 0; i < count; i++ {

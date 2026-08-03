@@ -46,7 +46,7 @@ func buildPlan(profileID string) (Plan, error) {
 		if err != nil {
 			current = "не удалось прочитать: " + err.Error()
 		}
-		plan.Items = append(plan.Items, PlanItem{Category: "Питание", Name: "Создать отдельную обратимую схему максимальной производительности", Current: current, Desired: "новая схема GofMan3 Max Performance", Changed: true})
+		plan.Items = append(plan.Items, PlanItem{Category: "Питание", Name: "Создать отдельную обратимую схему максимальной производительности", Current: current, Desired: "новая схема Luxury Optimization Max Performance", Changed: true})
 		for _, setting := range optionalMaximumPowerSettings {
 			if value, readErr := powerACValue(current, setting.Subgroup, setting.Setting); readErr == nil {
 				plan.Items = append(plan.Items, PlanItem{Category: "Питание", Name: setting.Name, Current: fmt.Sprint(value), Desired: fmt.Sprint(setting.Value), Changed: value != setting.Value})

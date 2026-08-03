@@ -11,10 +11,11 @@ import (
 	"strings"
 )
 
-var version = "3.2.0-dev"
-
 func main() {
 	args, resultPath := stripResultFile(os.Args[1:])
+	if (len(args) == 0 || args[0] != "update") && internalParentPID(args) == 0 {
+		maybeAutoUpdate()
+	}
 	err := run(args)
 	if resultPath != "" {
 		if parentPID := internalParentPID(args); parentPID != 0 {
@@ -22,7 +23,7 @@ func main() {
 		}
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Ошибка:", err)
+		fmt.Fprintln(os.Stderr, "Ошибка:", displayText(err.Error()))
 		os.Exit(1)
 	}
 }
@@ -82,8 +83,10 @@ func run(args []string) error {
 		return benchmarkCommand(args[1:])
 	case "backups":
 		return backupsCommand(args[1:])
+	case "update":
+		return updateCommand(args[1:])
 	case "version", "--version", "-v":
-		fmt.Println("GofMan3 Optimizer", version)
+		fmt.Println(productName, version)
 		return nil
 	case "help", "--help", "-h":
 		printHelp()
@@ -112,7 +115,7 @@ func auditCommand(args []string) error {
 		if err := os.WriteFile(*out, data, 0o600); err != nil {
 			return err
 		}
-		fmt.Println("Отчёт сохранён:", *out)
+		fmt.Println("Отчёт сохранён:", displayText(*out))
 	}
 	if *jsonOnly {
 		fmt.Println(string(data))
@@ -193,7 +196,7 @@ func applyCommand(args []string) error {
 		return err
 	}
 	if !*quiet {
-		fmt.Println("Готово. Резервная копия:", path)
+		fmt.Println("Готово. Резервная копия:", displayText(path))
 	}
 	return nil
 }
@@ -259,7 +262,7 @@ func restoreCommand(args []string) error {
 		return err
 	}
 	if !*quiet {
-		fmt.Println("Восстановлено:", path)
+		fmt.Println("Восстановлено:", displayText(path))
 	}
 	return nil
 }
@@ -296,41 +299,41 @@ func confirm(question string) bool {
 }
 
 func printAudit(audit Audit) {
-	fmt.Println("GofMan3 Optimizer", audit.Version)
+	fmt.Println(productName, audit.Version)
 	for _, cpu := range audit.Hardware.CPUs {
-		fmt.Printf("CPU: %s — %d ядер / %d потоков\n", cpu.Name, cpu.Cores, cpu.Logical)
+		fmt.Printf("CPU: %s — %d ядер / %d потоков\n", displayText(cpu.Name), cpu.Cores, cpu.Logical)
 	}
 	for _, gpu := range audit.Hardware.GPUs {
-		fmt.Printf("GPU: %s (%s), драйвер %s\n", gpu.Name, gpu.Vendor, gpu.DriverVersion)
+		fmt.Printf("GPU: %s (%s), драйвер %s\n", displayText(gpu.Name), displayText(gpu.Vendor), displayText(gpu.DriverVersion))
 	}
 	fmt.Println("Активная схема:", audit.ActivePowerGUID)
 	if len(audit.Findings) == 0 {
 		fmt.Println("Рекомендуемый игровой профиль уже применён полностью.")
 	}
 	for _, finding := range audit.Findings {
-		fmt.Printf("%s — %s\n", finding.Title, finding.Evidence)
+		fmt.Printf("%s — %s\n", displayText(finding.Title), displayText(finding.Evidence))
 	}
 	for _, warning := range audit.Warnings {
-		fmt.Println("Предупреждение:", warning)
+		fmt.Println("Предупреждение:", displayText(warning))
 	}
 }
 
 func printPlan(plan Plan) {
-	fmt.Println(plan.Profile.Name)
+	fmt.Println(displayText(plan.Profile.Name))
 	for _, item := range plan.Items {
 		marker := "="
 		if item.Changed {
 			marker = "→"
 		}
-		fmt.Printf("[%s] %s: %s %s %s\n", item.Category, item.Name, item.Current, marker, item.Desired)
+		fmt.Printf("[%s] %s: %s %s %s\n", displayText(item.Category), displayText(item.Name), displayText(item.Current), marker, displayText(item.Desired))
 	}
 	for _, warning := range plan.Warnings {
-		fmt.Println("Предупреждение:", warning)
+		fmt.Println("Предупреждение:", displayText(warning))
 	}
 }
 
 func printHelp() {
-	fmt.Print(`GofMan3 Optimizer
+	fmt.Print(`Luxury Optimization
 
 Без аргументов запускается mouse-first TUI.
 
@@ -348,6 +351,7 @@ func printHelp() {
   network interfaces|test              интерфейсы или TCP latency/jitter
   benchmark template|compare           сравнить FPS/1% low/p95 frametime
   backups list [--json]                sealed restore center (нужен admin)
+  update check|install|enable|disable  обновления из GitHub Releases с SHA-256
   restore [--id BACKUP_ID]             откатить последнюю или выбранную операцию
   clean --days 2                       безопасно очистить старые temp-файлы
   version                              версия

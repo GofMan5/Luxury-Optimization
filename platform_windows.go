@@ -360,7 +360,7 @@ func runElevatedAndWait(args []string) error {
 	if err != nil {
 		return err
 	}
-	resultFile, err := os.CreateTemp(temporary, "GofMan3-result-*.json")
+	resultFile, err := os.CreateTemp(temporary, "Luxury-Optimization-result-*.json")
 	if err != nil {
 		return err
 	}
@@ -470,7 +470,7 @@ func writeElevatedResult(path string, parentPID uint32, operationErr error) erro
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(filepath.Clean(filepath.Dir(path)), filepath.Clean(parentTemp)) || !strings.HasPrefix(filepath.Base(path), "GofMan3-result-") || !strings.HasSuffix(filepath.Base(path), ".json") {
+	if !strings.EqualFold(filepath.Clean(filepath.Dir(path)), filepath.Clean(parentTemp)) || !strings.HasPrefix(filepath.Base(path), "Luxury-Optimization-result-") || !strings.HasSuffix(filepath.Base(path), ".json") {
 		return errors.New("недопустимый путь result-файла")
 	}
 	pointer, err := windows.UTF16PtrFromString(path)
@@ -600,7 +600,7 @@ func createPerformancePlan(guid string) ([]PowerSetting, error) {
 		return nil, fmt.Errorf("создание отдельной схемы производительности: %w", err)
 	}
 	settings := availableMaximumPowerSettings(guid)
-	commands := [][]string{{"/changename", guid, "GofMan3 Max Performance", "Обратимая игровая схема"}}
+	commands := [][]string{{"/changename", guid, "Luxury Optimization Max Performance", "Обратимая игровая схема"}}
 	for _, setting := range settings {
 		commands = append(commands, []string{"/setacvalueindex", guid, setting.Subgroup, setting.Setting, fmt.Sprint(setting.Value)})
 	}
@@ -837,5 +837,6 @@ func appDataDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Keep the v3 state directory so existing sealed backups remain restorable.
 	return filepath.Join(base, "GofMan3 Optimizer"), nil
 }

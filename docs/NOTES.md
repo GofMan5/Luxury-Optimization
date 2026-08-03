@@ -2,60 +2,59 @@
 
 ## Product rule
 
-The project optimizes gaming responsiveness, frametime stability and general Windows responsiveness. A tweak belongs in the product only when it has a plausible measurable benefit, a bounded target, exact backup, read-back verification and rollback.
+A change belongs in Luxury Optimization only when it targets a measurable outcome, has a bounded platform/hardware scope and fails safely. Persistent mutations additionally require exact backup, read-back verification and rollback.
+
+Unsupported settings are capabilities, not errors: report them, mark them `skipped` and continue without partial mutation.
 
 ## Accepted
 
-| Tweak | Why it stays | Guardrail |
+| Capability | Why it stays | Guardrail |
 |---|---|---|
-| Game Mode on | Windows-native gaming scheduling policy | Current value is planned, backed up and verified |
-| Game DVR capture off | Removes background capture work when unused | Only capture settings are changed |
-| Mouse acceleration off | Predictable raw pointer response for games | Live state is captured, applied through SPI and restored |
-| Separate performance power plan | Avoids mutating the user's original plan | New GUID, read-back verification, delete on rollback |
-| CPU minimum 5%, maximum 100% | Preserves fast boost without pinning idle clocks at 100% | AC-only temporary plan; EPP/boost remain capability checked |
-| CPU EPP 0 / aggressive boost | Can improve AC responsiveness | Applied only when the platform exposes each setting |
-| PCIe/USB AC power saving off | Avoids wake latency under the maximum profile | AC only; maximum profile warns about heat/power |
-| Ethernet EEE / Interrupt Moderation off | Can reduce latency | Physical Ethernet only; driver must advertise the keyword |
-| Startup/menu delay off | Improves perceived desktop responsiveness | User values are backed up and restored |
-| Temporary game boost | Keeps the maximum profile scoped to one play session | Game stays non-elevated; session lock, exact backup and automatic restore |
-| Per-game process priority | Useful for a measured CPU-contention case | Explicit only, process-scoped, native read-back; realtime is rejected |
-| HKCU startup manager | Removing unused launchers lowers persistent background load | Exact string type/value backup; no automatic disabling and no HKLM mutation |
-| Game library discovery | Reduces setup friction without installing a service | Read-only Steam/Epic/Xbox scan; every selected EXE is revalidated |
-| Service inventory | Makes background activity visible | Minimal-query SCM handles; no start-mode mutation |
-| TCP latency baseline | Detects reachability, jitter and tail-latency changes | Explicit endpoint, bounded count/timeouts; does not claim UDP/bufferbloat |
-| Benchmark comparison | Separates real gains from one-run noise | Minimum three runs, medians and MAD-derived threshold |
-| Restore center | Makes rollback state inspectable without weakening backup ACL | Admin-only list, seal validation and exact ID restore |
+| Windows Game Mode and Game DVR controls | Native gaming policy and removable background capture work | Fixed targets, exact backup and read-back |
+| Windows mouse acceleration | Predictable pointer response | Registry plus live SPI capture/apply/restore |
+| Separate Windows performance plan | Does not mutate the user's original plan | New GUID, AC-only values, read-back and delete on rollback |
+| CPU 5–100%, EPP and boost | Responsive without pinning idle clocks at 100% | Only settings exposed by the machine |
+| PCIe/USB AC power saving | Can avoid wake latency in maximum profile | Temporary plan; battery/heat warning |
+| Ethernet EEE/Interrupt Moderation | Can reduce latency on some physical NICs | Only driver-advertised keywords; exact restore |
+| Temporary game boost | Keeps aggressive state scoped to a game session | Non-admin game, session lock and automatic Windows restore |
+| Explicit process priority/affinity | Useful in measured contention cases | Per-game only, no realtime, capability/read-back checks |
+| Game discovery and saved profiles | Removes setup friction | Read-only manifests, bounded scan, canonical executable revalidation |
+| Startup manager | Reduces deliberate background load | Explicit user entry only; system scope remains read-only |
+| Service inventory | Makes background state visible | Read-only on Windows SCM and systemd |
+| TCP and benchmark tools | Produce comparable evidence | Bounded timeouts, at least three runs, median/MAD threshold |
+| Linux GameMode | Native session policy used by games and distributions | Used only when `gamemoderun` exists; direct fallback |
+| Linux nice/affinity | Native session process controls | Missing `CAP_SYS_NICE` or affinity support is skipped |
+| GitHub Release updater | Keeps standalone binaries current | Opt-in, `1.0.x` pin, HTTPS allowlist, size limits and SHA-256 |
 
 ## Conditional or benchmark first
 
 | Tweak | Decision |
 |---|---|
-| HAGS | Per-GPU/per-driver result varies; add only with before/after frametime evidence |
-| Core parking | Can hurt hybrid scheduling and boost; benchmark per CPU before adding |
-| MSI/IRQ affinity | Hardware topology and driver dependent; keep outside universal profiles |
-| RSS/RSC/offloads | Throughput/CPU/latency trade-off; do not apply globally |
-| Process priority changes | Games and anti-cheat may override them; require per-game evidence |
-| CPU affinity | Hybrid topology and anti-cheat behavior vary; explicit per-game mask only |
+| HAGS and fullscreen optimizations | Per-GPU/per-driver results vary; require frametime evidence |
+| Core parking and scheduler policies | Hybrid CPUs and kernels differ; benchmark per system |
+| MSI/IRQ affinity | Hardware topology and driver dependent |
+| RSS/RSC/offloads/TCP ACK recipes | Throughput, CPU and latency trade-offs differ |
+| Linux CPU governor changes | Distribution power managers and GameMode own this policy |
+| Negative Linux nice | Requires `CAP_SYS_NICE`; never elevate a game to obtain it |
 
 ## Rejected
 
-- Defender/Firewall/mitigation disabling.
-- Global `PowerThrottlingOff`: Game Mode already scopes gaming behavior, while the global override can increase heat and battery drain outside games.
-- Undocumented power GUID `d4e98f31-5ffe-4ce1-be31-1b38b384c009`: no stable alias or query semantics, so it is not an optimization target.
-- BCD/HPET/dynamic-tick recipes.
-- Memory cleaners, standby-list loops and memory-compression disabling.
-- Fixed thread counts, affinity masks and timer-resolution daemons.
-- Private NVIDIA/AMD/Intel registry keys.
-- Disabling Windows Update, scheduled maintenance or core services.
-- Mass service start-mode changes, device disabling and forced MSI/IRQ affinity.
-- IFEO CPU/I/O/page priority for system processes or persistent game entries; live process APIs cover the scoped case.
-- Mutable runtime downloads or bundled unsigned tools.
+- Defender, Firewall, VBS, Credential Guard or mitigation disabling.
+- BCD, HPET, dynamic-tick and timer-resolution recipes.
+- Memory cleaners, standby-list loops, compression disabling and cache purges.
+- Fixed affinity, IRQ masks, thread counts or universal scheduler values.
+- Private NVIDIA/AMD/Intel registry keys or opaque profile imports.
+- Disabling Windows Update, scheduled maintenance, systemd units or core services in bulk.
+- IFEO priority/mitigation values for CSRSS, games or anti-cheat.
+- App removal or debloat presented as an FPS optimization.
+- Mutable runtime downloads, unsigned bundled tools or update assets without a release checksum.
+- Pretending Windows registry/power tweaks exist on Linux.
 
-## Review checklist
+## Measurement checklist
 
-1. State the exact measurable outcome: median FPS, 1% low, frametime variance, latency or startup time.
+1. Name the metric: median FPS, 1% low, p95 frametime, latency, startup time or resource use.
 2. Run at least three identical before/after passes.
-3. Reject changes within normal run-to-run variance.
-4. Keep hardware capability checks and AC/battery scope explicit.
-5. Require backup, apply, read-back verify and rollback before shipping.
-6. Record every accepted or rejected candidate in this file and every release change in `CHANGELOG.md`.
+3. Reject differences inside normal run-to-run variance.
+4. Record OS, hardware, driver, power and thermal conditions.
+5. Verify capability detection and unsupported-system behavior.
+6. For persistent state, prove backup, apply, read-back and rollback including failure paths.

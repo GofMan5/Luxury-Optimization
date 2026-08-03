@@ -59,19 +59,19 @@ func gamesCommand(args []string) error {
 		return nil
 	}
 	for _, game := range report.Games {
-		fmt.Printf("[%s] %s — %s\n", game.Source, game.Name, game.InstallDir)
+		fmt.Printf("[%s] %s — %s\n", displayText(game.Source), displayText(game.Name), displayText(game.InstallDir))
 		for _, executable := range game.Executables {
-			fmt.Println("  EXE:", executable)
+			fmt.Println("  EXE:", displayText(executable))
 		}
 	}
 	for _, warning := range report.Warnings {
-		fmt.Println("Предупреждение:", warning)
+		fmt.Println("Предупреждение:", displayText(warning))
 	}
 	return nil
 }
 
 func discoverGames() GamesReport {
-	report := GamesReport{}
+	report := GamesReport{Games: []GameInstall{}}
 	for _, root := range steamRoots() {
 		games, warnings := scanSteamRoot(root)
 		report.Games = append(report.Games, games...)

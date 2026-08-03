@@ -269,7 +269,7 @@ func (m *tuiModel) View() string {
 		return message + "\n\n" + lipgloss.NewStyle().Foreground(colorText).Background(colorPanel).Render(button)
 	}
 	contentWidth := m.contentWidth()
-	header := fitText("GOFMAN3 OPTIMIZER  "+version, contentWidth-4)
+	header := fitText("LUXURY OPTIMIZATION  "+version, contentWidth-4)
 	subtitle := fitText("Windows performance toolkit • mouse-first • полный откат", contentWidth)
 	lines := []string{"", "  " + titleStyle.Render(header), "  " + mutedStyle.Render(subtitle)}
 	lines = append(lines, "")
@@ -302,11 +302,11 @@ func (m *tuiModel) renderHome(lines *[]string) {
 	cpu := "Не определён"
 	if len(m.audit.Hardware.CPUs) > 0 {
 		item := m.audit.Hardware.CPUs[0]
-		cpu = fmt.Sprintf("%s  •  %dC/%dT", item.Name, item.Cores, item.Logical)
+		cpu = fmt.Sprintf("%s  •  %dC/%dT", displayText(item.Name), item.Cores, item.Logical)
 	}
 	var gpuNames []string
 	for _, gpu := range m.audit.Hardware.GPUs {
-		gpuNames = append(gpuNames, gpu.Name+" ["+gpu.Vendor+"]")
+		gpuNames = append(gpuNames, displayText(gpu.Name)+" ["+displayText(gpu.Vendor)+"]")
 	}
 	if len(gpuNames) == 0 {
 		gpuNames = []string{"Не определена"}
@@ -329,16 +329,16 @@ func (m *tuiModel) renderHome(lines *[]string) {
 
 func (m *tuiModel) renderAudit(lines *[]string) {
 	var content []string
-	content = append(content, goodStyle.Render("АУДИТ СИСТЕМЫ"), fmt.Sprintf("Windows: %s %s (build %s)", m.audit.Hardware.OS.Caption, m.audit.Hardware.OS.Architecture, m.audit.Hardware.OS.BuildNumber), "Power GUID: "+m.audit.ActivePowerGUID, "")
+	content = append(content, goodStyle.Render("АУДИТ СИСТЕМЫ"), fmt.Sprintf("Windows: %s %s (build %s)", displayText(m.audit.Hardware.OS.Caption), displayText(m.audit.Hardware.OS.Architecture), displayText(m.audit.Hardware.OS.BuildNumber)), "Power GUID: "+displayText(m.audit.ActivePowerGUID), "")
 	if len(m.audit.Findings) == 0 {
 		content = append(content, goodStyle.Render("Рекомендуемый игровой профиль применён полностью."))
 	} else {
 		for _, finding := range m.audit.Findings {
-			content = append(content, warnStyle.Render(finding.Title), "  "+finding.Evidence, "  Действие: "+finding.Action, "")
+			content = append(content, warnStyle.Render(displayText(finding.Title)), "  "+displayText(finding.Evidence), "  Действие: "+displayText(finding.Action), "")
 		}
 	}
 	for _, warning := range m.audit.Warnings {
-		content = append(content, mutedStyle.Render("Примечание: "+warning))
+		content = append(content, mutedStyle.Render("Примечание: "+displayText(warning)))
 	}
 	m.addViewport(lines, content, m.height-12)
 	m.addButton(lines, "refresh-audit", "Обновить аудит", "повторить все read-only проверки")
@@ -364,16 +364,16 @@ func (m *tuiModel) renderPlan(lines *[]string) {
 			changed++
 		}
 	}
-	content := []string{goodStyle.Render(m.plan.Profile.Name), m.plan.Profile.Description, fmt.Sprintf("Изменений: %d из %d", changed, len(m.plan.Items)), ""}
+	content := []string{goodStyle.Render(displayText(m.plan.Profile.Name)), displayText(m.plan.Profile.Description), fmt.Sprintf("Изменений: %d из %d", changed, len(m.plan.Items)), ""}
 	for _, warning := range m.plan.Warnings {
-		content = append(content, warnStyle.Render("ВНИМАНИЕ • "+warning), "")
+		content = append(content, warnStyle.Render("ВНИМАНИЕ • "+displayText(warning)), "")
 	}
 	for _, item := range m.plan.Items {
 		marker := goodStyle.Render("БЕЗ ИЗМЕНЕНИЙ")
 		if item.Changed {
 			marker = lipgloss.NewStyle().Foreground(colorViolet).Bold(true).Render("ИЗМЕНИТЬ")
 		}
-		content = append(content, marker+"  "+item.Category+" • "+item.Name, "  "+item.Current+"  →  "+item.Desired, "")
+		content = append(content, marker+"  "+displayText(item.Category)+" • "+displayText(item.Name), "  "+displayText(item.Current)+"  →  "+displayText(item.Desired), "")
 	}
 	m.addViewport(lines, content, m.height-12)
 	m.addButton(lines, "apply-plan", "Применить этот план", "backup → apply → verify; ошибка вызывает rollback")

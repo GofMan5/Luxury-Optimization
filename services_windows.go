@@ -59,7 +59,7 @@ func servicesCommand(args []string) error {
 		return nil
 	}
 	for _, service := range report.Services {
-		fmt.Printf("%-8s %-10s %s (%s)\n", service.State, service.StartType, service.Display, service.Name)
+		fmt.Printf("%-8s %-10s %s (%s)\n", displayText(service.State), displayText(service.StartType), displayText(service.Display), displayText(service.Name))
 	}
 	if report.Skipped > 0 {
 		fmt.Println("Пропущено недоступных служб:", report.Skipped)
@@ -78,7 +78,7 @@ func listServices(state, match string) (ServicesReport, error) {
 	if err != nil {
 		return ServicesReport{}, err
 	}
-	report := ServicesReport{}
+	report := ServicesReport{Services: []ServiceEntry{}}
 	match = strings.ToLower(match)
 	for _, name := range names {
 		namePointer, pointerErr := windows.UTF16PtrFromString(name)

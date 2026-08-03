@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -78,7 +80,7 @@ func savedGamesCommand(args []string) error {
 
 func addSavedGame(args []string) error {
 	set := flag.NewFlagSet("games add", flag.ContinueOnError)
-	path := set.String("path", "", "абсолютный путь к EXE")
+	path := set.String("path", "", "абсолютный путь к игре")
 	name := set.String("name", "", "отображаемое имя")
 	profile := set.String("profile", profileMaximum, "recommended или maximum")
 	priority := set.String("priority", "normal", "normal, above-normal или high")
@@ -91,22 +93,14 @@ func addSavedGame(args []string) error {
 		return err
 	}
 	if *name == "" {
-		*name = strings.TrimSuffix(filepath.Base(resolved), filepath.Ext(resolved))
+		*name = filepath.Base(resolved)
 	}
 	affinity, err := parseAffinity(*affinityText)
 	if err != nil {
 		return err
 	}
-	hash := sha256.Sum256([]byte(strings.ToLower(resolved)))
-	game := SavedGame{
-		ID:       hex.EncodeToString(hash[:])[:12],
-		Name:     *name,
-		Path:     resolved,
-		Profile:  *profile,
-		Priority: *priority,
-		Affinity: uint64(affinity),
-		Args:     append([]string(nil), set.Args()...),
-	}
+	hash := sha256.Sum256([]byte(resolved))
+	game := SavedGame{ID: hex.EncodeToString(hash[:])[:12], Name: *name, Path: resolved, Profile: *profile, Priority: *priority, Affinity: uint64(affinity), Args: append([]string(nil), set.Args()...)}
 	if err := validateSavedGame(game, true); err != nil {
 		return err
 	}
@@ -120,12 +114,12 @@ func addSavedGame(args []string) error {
 		return err
 	}
 	replaced := false
-	for i := range store.Games {
-		if store.Games[i].ID == game.ID {
-			if !strings.EqualFold(store.Games[i].Path, game.Path) {
+	for index := range store.Games {
+		if store.Games[index].ID == game.ID {
+			if store.Games[index].Path != game.Path {
 				return errors.New("обнаружена коллизия ID игрового профиля")
 			}
-			store.Games[i], replaced = game, true
+			store.Games[index], replaced = game, true
 			break
 		}
 	}
@@ -170,10 +164,7 @@ func removeSavedGame(args []string) error {
 	if err := set.Parse(args); err != nil {
 		return err
 	}
-	if set.NArg() != 0 {
-		return errors.New("лишние аргументы games remove")
-	}
-	if !savedGameIDPattern.MatchString(*id) {
+	if set.NArg() != 0 || !savedGameIDPattern.MatchString(*id) {
 		return errors.New("укажите корректный --id из games list")
 	}
 	if !*yes && !confirm("Удалить игровой профиль "+*id+"?") {
@@ -209,12 +200,11 @@ func removeSavedGame(args []string) error {
 }
 
 func gameProfilesPath() (string, error) {
-	base, err := localAppDataDirectory()
+	base, err := xdgDirectory("XDG_CONFIG_HOME", ".config")
 	if err != nil {
 		return "", err
 	}
-	// Keep the legacy location so existing game profiles survive the rename.
-	return filepath.Join(base, "GofMan3 Optimizer", "games.json"), nil
+	return filepath.Join(base, "luxury-optimization", "games.json"), nil
 }
 
 func loadSavedGamesDefault() (SavedGames, error) {
@@ -242,10 +232,10 @@ func loadSavedGames(path string) (SavedGames, error) {
 	if err != nil {
 		return store, err
 	}
-	if !info.Mode().IsRegular() || isReparsePoint(info) || info.Size() <= 0 || info.Size() > maxGameProfilesSize {
+	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() <= 0 || info.Size() > maxGameProfilesSize {
 		return store, errors.New("games.json не является допустимым обычным файлом")
 	}
-	data, err := os.ReadFile(path)
+	data, err := readSmallFile(path, maxGameProfilesSize)
 	if err != nil {
 		return store, err
 	}
@@ -273,17 +263,24 @@ func saveSavedGames(path string, store SavedGames) error {
 	if len(data) > maxGameProfilesSize {
 		return errors.New("games.json превышает допустимый размер")
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
-	file, err := os.CreateTemp(filepath.Dir(path), "games-*.tmp")
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(dir, "games-*.tmp")
 	if err != nil {
 		return err
 	}
 	temporary := file.Name()
 	defer os.Remove(temporary)
-	if err = protectResultFile(file); err == nil {
+	if err = file.Chmod(0o600); err == nil {
 		_, err = file.Write(data)
+	}
+	if err == nil {
+		err = file.Sync()
 	}
 	if closeErr := file.Close(); err == nil {
 		err = closeErr
@@ -335,15 +332,15 @@ func validateSavedGame(game SavedGame, requirePath bool) error {
 			return err
 		}
 	}
-	if !filepath.IsAbs(game.Path) || !strings.EqualFold(filepath.Ext(game.Path), ".exe") {
-		return errors.New("путь к игре должен быть абсолютным EXE")
+	if !filepath.IsAbs(game.Path) {
+		return errors.New("путь к игре должен быть абсолютным")
 	}
 	if requirePath {
 		resolved, err := validateGameExecutable(game.Path)
 		if err != nil {
 			return err
 		}
-		if !strings.EqualFold(resolved, game.Path) {
+		if resolved != game.Path {
 			return errors.New("канонический путь к игре изменился; добавьте профиль заново")
 		}
 	}
@@ -356,4 +353,26 @@ func validateSavedGame(game SavedGame, requirePath bool) error {
 		}
 	}
 	return nil
+}
+
+func acquireGameProfilesLock() (func(), error) {
+	path, err := gameProfilesPath()
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	lock, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		lock.Close()
+		return nil, errors.New("игровые профили уже изменяются другим процессом")
+	}
+	return func() {
+		_ = unix.Flock(int(lock.Fd()), unix.LOCK_UN)
+		_ = lock.Close()
+	}, nil
 }

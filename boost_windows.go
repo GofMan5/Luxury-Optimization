@@ -74,7 +74,7 @@ func runBoostSession(game, profile, priority string, affinity uintptr, gameArgs 
 	}
 	tuningErr := tuneGameProcess(uint32(command.Process.Pid), priority, affinity)
 	if tuningErr != nil {
-		fmt.Fprintln(os.Stderr, "Предупреждение: настройка процесса:", tuningErr)
+		fmt.Fprintln(os.Stderr, "Предупреждение: настройка процесса:", displayText(tuningErr.Error()))
 	}
 	fmt.Println("Boost-профиль применён. Ожидаю завершения игры; Ctrl+C завершит boost-сессию.")
 	wait := make(chan error, 1)

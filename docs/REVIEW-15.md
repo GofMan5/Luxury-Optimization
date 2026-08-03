@@ -1,49 +1,64 @@
 # Fifteen-pass project review
 
-Date: 2026-08-01
-Scope: complete active repository after the BoosterX-coverage implementation.
+Date: 2026-08-03
+
+Scope: complete Luxury Optimization 1.0.0 source tree, public files, build/release contract and generated target matrix.
 
 ## Passes
 
 | # | Independent review lens | Result |
 |---:|---|---|
-| 1 | Product requirements and BoosterX capability matrix | Implemented coverage and explicit exclusions match the product rule |
-| 2 | Ponytail whole-repo complexity audit | No dependency or speculative abstraction to remove |
-| 3 | CLI parsing and trust-boundary arguments | Fixed silent acceptance of unexpected positional arguments |
-| 4 | Registry journal, apply, rollback and retry state | Added read-back verification for registry, mouse, power and Ethernet rollback |
-| 5 | UAC, parent identity, internal flags and result-file ACL | Fixed ACL handle access; same-executable parent and internal boost guards verified |
-| 6 | Filesystem, atomic publication, reparse points and path containment | Atomic profile writes and bounded regular-file reads verified |
-| 7 | Cross-process locking, race behavior and crash state | Removed OS-thread mutex ownership; handle lifetime is the lock |
-| 8 | Steam/Epic/Xbox discovery and saved game profiles | Traversal, stale paths, ID collision, PE and argument limits verified |
-| 9 | Process priority/affinity and temporary power plan | Native read-back, realtime rejection, processor bounds and 5–100% CPU plan verified |
-| 10 | Startup transaction and service inventory privileges | Added source re-read before delete; SCM uses query-only access |
-| 11 | Network and benchmark statistics | Bounded TCP test and median/MAD comparison edge cases verified |
-| 12 | TUI navigation, hitboxes, minimum width and discoverability | Repeated UI tests passed; help entry now names all new tools |
-| 13 | Security, command execution, dependencies and vulnerabilities | Staticcheck clean; govulncheck reports no reachable vulnerabilities |
-| 14 | Windows architecture compatibility | amd64, arm64 and 386 builds passed |
-| 15 | Documentation, versions, external references and release contract | 3.2.0 synchronized; links, module graph and diff checks passed |
+| 1 | Product requirements, branding and `1.0.x` version policy | Product/module/artifact/TUI names aligned; legacy state names intentionally isolated |
+| 2 | Ponytail whole-repo complexity and dependency audit | Portable network/benchmark/types moved to shared files; Linux release links only `x/sys/unix`; no dependency added |
+| 3 | Go build constraints and OS/architecture separation | Windows `amd64/arm64/386` and Linux `amd64/arm64` compile from one module |
+| 4 | Linux system detection and capability fallback | Ubuntu 24.04 WSL audit passed; missing GameMode and Windows-only settings are explicit non-fatal skips |
+| 5 | Linux game launch, nice, affinity, signals and cpusets | Real `/usr/bin/sleep` boost passed; unavailable `CAP_SYS_NICE` warned without failure; affinity read-back passed |
+| 6 | Steam discovery and saved game profiles | Traversal bounds, executable validation, atomic JSON, `flock`, ID/path/argument limits reviewed and tested |
+| 7 | Startup and service inventory | XDG disable/enable round trip passed; system scope remains read-only; systemd uses absolute tool path, C locale and timeout |
+| 8 | Network and benchmark statistics | Portable tests passed; worst-case network test duration is capped; median/MAD comparison retained |
+| 9 | Update discovery and supply-chain boundary | Exact repository/channel/target, HTTPS host+port allowlist, response limits, asset size and SHA-256 tested |
+| 10 | Update replacement, concurrency and recovery | Update lock, corrupt-config recovery and atomic Linux mode-preserving replacement tested; Windows replacement is deferred with rollback |
+| 11 | Windows UAC, backup and legacy compatibility | Existing allowlisted PowerShell, parent binding, result-file identity, sealed backup and rollback tests stayed green |
+| 12 | Filesystem deletion and transactional publication | Linux clean no longer recurses; shell staging uses `mktemp`; both builders preserve prior managed artifacts on failure |
+| 13 | CLI parsing and terminal output | Existing positional-argument regression suite passed; untrusted display strings now strip ANSI/bidi controls and are bounded |
+| 14 | OSS, documentation, workflows and release assets | MIT/community/security files present; local links, PowerShell parser, `sh -n` and actionlint passed |
+| 15 | Tests, static analysis, vulnerabilities and reproducibility | tests×15, race×3, vet, staticcheck, govulncheck and two byte-identical five-target builds passed |
 
 ## Confirmed findings and closure
 
 | ID | Finding | Closure |
 |---|---|---|
-| R15-01 | Temp files were opened without the access required to set their DACL | Reopen with `READ_CONTROL | WRITE_DAC`, compare file identity, then set protected ACL |
-| R15-02 | Several commands ignored trailing positional input | Every non-launch command now rejects `NArg() != 0`; table regression test added |
-| R15-03 | Rollback trusted successful API return codes without state read-back | Registry, live mouse, power plan and Ethernet must match the backup before retry flags clear |
-| R15-04 | Named mutex release depended on Go returning to the owning OS thread | Locks now use atomic named-object existence and handle lifetime, with no ownership |
-| R15-05 | Game manifests and profile IDs needed explicit collision/traversal closure | Canonical containment checks, malicious-manifest test and path collision rejection added |
-| R15-06 | A startup value could change after backup but before deletion | Source type/value is read again immediately before delete |
-| R15-07 | The standard service manager helper requested all-access | SCM and service handles now request enumeration/query rights only |
-| R15-08 | One rollback error violated Go error-style conventions | Message normalized; staticcheck rerun clean |
-| R15-09 | TUI help button did not expose the expanded tool surface | Button now names games/startup/services/network/benchmark/rollback |
+| LO-001 | User-facing TUI and artifact names still exposed the pre-rename product | Central brand constants, new artifact contract and TUI header |
+| LO-002 | Every Go source file was Windows-selected, so Linux could not build | Shared portable core plus native Linux vertical slices |
+| LO-003 | Linux affinity assumed CPUs were contiguous from zero | Validate requested bits against the process's actual cpuset and read back all CPUSet bits |
+| LO-004 | Linux cleanup recursively removed matching non-empty temp directories | Remove only direct app-owned files and empty directories; nested data is never traversed |
+| LO-005 | Test-only loopback HTTP allowance could have enabled production updater SSRF | Insecure loopback is disabled by default and exists only behind a test seam; production requires trusted HTTPS/443 |
+| LO-006 | Concurrent self-updates and damaged update config lacked recovery | Platform update locks plus atomic replaceable config; enable/disable can recover malformed JSON |
+| LO-007 | Automatic update did not run for the no-argument TUI/default flow | Auto-check now covers both default and command launches while excluding internal/elevated children |
+| LO-008 | Remote/local names could inject terminal controls into human output | Shared control/format stripping and 512-rune display bound; JSON remains lossless |
+| LO-009 | Shell build staging used a predictable PID directory | `mktemp -d` creates the staging boundary before any artifact is written |
+| LO-010 | Network limits allowed a 1000-second worst case | Reject configurations whose timeout budget exceeds five minutes |
+| LO-011 | Empty game/service/startup/finding collections serialized as `null` | Stable empty arrays for machine-readable inventory contracts |
+| LO-012 | Build scripts accepted `+metadata` while the updater intentionally did not | Release builders now accept stable or `-prerelease` `1.0.x` versions only |
+| LO-013 | Update asset redirects and URLs did not constrain non-standard HTTPS ports | Every production request and redirect must stay on approved hosts and port 443 |
+| LO-014 | A remote release URL was printed without needing remote presentation data | Display URL is constructed from the pinned repository and validated tag |
 
-## Review-of-review
+## Review-of-review evidence
 
-- Final diff Ponytail review: `Lean already. Ship.` No new dependency was added.
-- `go test -count=15 ./...`: passed.
-- `go test -race -count=3 ./...`: passed.
-- `go vet ./...`: passed.
-- `staticcheck ./...`: passed.
-- `govulncheck ./...`: no vulnerabilities found.
-- `go mod verify` and `go mod tidy -diff`: clean.
-- amd64, arm64 and 386 review builds: passed; temporary artifacts removed.
+- `go test -count=15 -mod=readonly ./...`: passed.
+- `go test -race -count=3 -mod=readonly ./...`: passed.
+- `go vet`, `go mod verify`, `go mod tidy -diff`: passed/clean.
+- `staticcheck v0.6.1`: clean.
+- `govulncheck v1.1.4`: no vulnerabilities found.
+- `actionlint v1.7.7`, PowerShell AST parse and `sh -n build.sh`: passed.
+- Native Linux test binary on Ubuntu 24.04 WSL: all tests passed.
+- Real Linux boost fallback with unavailable GameMode/CAP_SYS_NICE and explicit affinity: passed without persistent mutation.
+- Windows amd64 audit and Windows amd64/386 version smoke: passed at `1.0.0`.
+- Two consecutive complete builds produced identical hashes for all five binaries and `SHA256SUMS.txt`.
+- Banner SVG was rendered at 1600×520 and visually inspected.
+
+## Remaining platform evidence
+
+- Linux arm64 and Windows arm64 are cross-build verified but were not executed on physical arm64 hardware in this review.
+- Feral GameMode was unavailable in the Ubuntu WSL environment; the direct-launch fallback was live-tested and the wrapper path is covered by capability selection.
+- The Windows updater helper was compile/static reviewed rather than allowed to replace the running development binary; release checksums and Linux atomic replacement were exercised directly.

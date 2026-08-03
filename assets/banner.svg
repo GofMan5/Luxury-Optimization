@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="520" viewBox="0 0 1600 520" role="img" aria-labelledby="title desc">
+  <title id="title">Luxury Optimization</title>
+  <desc id="desc">Open-source gaming and system optimization for Windows and Linux.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050608"/>
+      <stop offset="0.52" stop-color="#0b0e13"/>
+      <stop offset="1" stop-color="#111722"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4e2a8"/>
+      <stop offset="0.45" stop-color="#d7b665"/>
+      <stop offset="1" stop-color="#9b7129"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="28%" cy="50%" r="58%">
+      <stop offset="0" stop-color="#d7b665" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#d7b665" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#d7b665" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="520" rx="28" fill="url(#bg)"/>
+  <rect width="1600" height="520" rx="28" fill="url(#grid)"/>
+  <rect width="1600" height="520" rx="28" fill="url(#glow)"/>
+  <rect x="1.5" y="1.5" width="1597" height="517" rx="26.5" fill="none" stroke="url(#gold)" stroke-opacity="0.54" stroke-width="3"/>
+
+  <g transform="translate(100 78)">
+    <circle cx="182" cy="182" r="140" fill="#090b0f" stroke="#2b2417" stroke-width="2"/>
+    <circle cx="182" cy="182" r="122" fill="none" stroke="url(#gold)" stroke-width="5" stroke-dasharray="530 236" stroke-linecap="round" transform="rotate(-36 182 182)" filter="url(#softGlow)"/>
+    <path d="M129 105V250H230" fill="none" stroke="url(#gold)" stroke-width="25" stroke-linecap="square" stroke-linejoin="miter"/>
+    <path d="M173 105H226C273 105 301 138 301 182S273 259 226 259H205" fill="none" stroke="#f4e2a8" stroke-opacity="0.84" stroke-width="13" stroke-linecap="round"/>
+    <path d="M15 182H82M35 151H94M35 213H94" stroke="url(#gold)" stroke-width="4" stroke-linecap="round" opacity="0.78"/>
+    <circle cx="182" cy="182" r="156" fill="none" stroke="#f4e2a8" stroke-opacity="0.08"/>
+  </g>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <text x="478" y="177" fill="#f3f0e8" font-size="58" font-weight="300" letter-spacing="17">LUXURY</text>
+    <text x="472" y="274" fill="url(#gold)" font-size="88" font-weight="750" letter-spacing="3">OPTIMIZATION</text>
+    <rect x="477" y="309" width="785" height="2" fill="url(#gold)" opacity="0.72"/>
+    <text x="478" y="356" fill="#aeb6c2" font-size="20" font-weight="500" letter-spacing="5">MEASURE · APPLY · VERIFY · ROLLBACK</text>
+
+    <g transform="translate(478 398)" font-size="14" font-weight="650" letter-spacing="2">
+      <g><rect width="132" height="42" rx="21" fill="#d7b665" fill-opacity="0.1" stroke="#d7b665" stroke-opacity="0.5"/><text x="66" y="27" text-anchor="middle" fill="#ead69c">WINDOWS</text></g>
+      <g transform="translate(148)"><rect width="108" height="42" rx="21" fill="#d7b665" fill-opacity="0.1" stroke="#d7b665" stroke-opacity="0.5"/><text x="54" y="27" text-anchor="middle" fill="#ead69c">LINUX</text></g>
+      <g transform="translate(272)"><rect width="172" height="42" rx="21" fill="#d7b665" fill-opacity="0.1" stroke="#d7b665" stroke-opacity="0.5"/><text x="86" y="27" text-anchor="middle" fill="#ead69c">OPEN SOURCE</text></g>
+    </g>
+  </g>
+
+  <path d="M1370 79h130M1410 103h90M1450 127h50" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" opacity="0.46"/>
+  <path d="M1318 443h182M1362 419h138M1410 395h90" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" opacity="0.22"/>
+</svg>
