@@ -1,6 +1,6 @@
 param(
-    [ValidatePattern('^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$')]
-    [string]$Version = '2.2.1'
+    [ValidatePattern('^1\.0\.\d+(?:-[0-9A-Za-z.-]+)?$')]
+    [string]$Version = '1.0.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +13,14 @@ $savedEnvironment = @{}
 foreach ($name in @('CGO_ENABLED', 'GOOS', 'GOARCH')) {
     $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
+
+$targets = @(
+    [pscustomobject]@{ OS = 'windows'; Arch = 'amd64'; Name = 'Luxury-Optimization-windows-amd64.exe' },
+    [pscustomobject]@{ OS = 'windows'; Arch = 'arm64'; Name = 'Luxury-Optimization-windows-arm64.exe' },
+    [pscustomobject]@{ OS = 'windows'; Arch = '386';   Name = 'Luxury-Optimization-windows-386.exe' },
+    [pscustomobject]@{ OS = 'linux';   Arch = 'amd64'; Name = 'Luxury-Optimization-linux-amd64' },
+    [pscustomobject]@{ OS = 'linux';   Arch = 'arm64'; Name = 'Luxury-Optimization-linux-arm64' }
+)
 
 Push-Location $projectRoot
 try {
@@ -27,28 +35,27 @@ try {
     $stagingPath = Join-Path $distPath ('.build-' + [Guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $stagingPath | Out-Null
     $env:CGO_ENABLED = '0'
-    $env:GOOS = 'windows'
 
-    $architectures = @('amd64', 'arm64', '386')
-    foreach ($architecture in $architectures) {
-        $env:GOARCH = $architecture
-        $outputPath = Join-Path $stagingPath "GofMan3-Optimizer-$architecture.exe"
+    foreach ($target in $targets) {
+        $env:GOOS = $target.OS
+        $env:GOARCH = $target.Arch
+        $outputPath = Join-Path $stagingPath $target.Name
         go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$Version" -o $outputPath .
-        if ($LASTEXITCODE -ne 0) { throw "go build $architecture failed with exit code $LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw "go build $($target.OS)/$($target.Arch) failed with exit code $LASTEXITCODE" }
     }
 
     $hashByName = @{}
-    $hashLines = foreach ($architecture in $architectures) {
-        $name = "GofMan3-Optimizer-$architecture.exe"
-        $artifactPath = Join-Path $stagingPath $name
-        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) { throw "Missing artifact: $name" }
+    $hashLines = foreach ($target in $targets) {
+        $artifactPath = Join-Path $stagingPath $target.Name
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) { throw "Missing artifact: $($target.Name)" }
         $hash = (Get-FileHash -LiteralPath $artifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
-        $hashByName[$name] = $hash
-        "$hash  $name"
+        $hashByName[$target.Name] = $hash
+        "$hash  $($target.Name)"
     }
     $hashPath = Join-Path $stagingPath 'SHA256SUMS.txt'
     [IO.File]::WriteAllLines($hashPath, [string[]]$hashLines, [Text.UTF8Encoding]::new($false))
-    $artifactNames = @($architectures | ForEach-Object { "GofMan3-Optimizer-$_.exe" }) + 'SHA256SUMS.txt'
+    $artifactNames = @($targets | ForEach-Object { $_.Name }) + 'SHA256SUMS.txt'
+
     $previousPath = Join-Path $stagingPath 'previous'
     New-Item -ItemType Directory -Path $previousPath | Out-Null
     $movedPrevious = @()
@@ -87,7 +94,12 @@ try {
         }
         throw $publicationError
     }
-    Get-ChildItem -LiteralPath $distPath -File | Select-Object Name, Length, LastWriteTime
+
+    foreach ($legacyName in @('GofMan3-Optimizer-amd64.exe', 'GofMan3-Optimizer-arm64.exe', 'GofMan3-Optimizer-386.exe')) {
+        $legacyPath = Join-Path $distPath $legacyName
+        if (Test-Path -LiteralPath $legacyPath -PathType Leaf) { Remove-Item -LiteralPath $legacyPath -Force }
+    }
+    Get-ChildItem -LiteralPath $distPath -File | Sort-Object Name | Select-Object Name, Length, LastWriteTime
 }
 finally {
     if (-not $preserveStaging -and $null -ne $stagingPath -and (Test-Path -LiteralPath $stagingPath)) {

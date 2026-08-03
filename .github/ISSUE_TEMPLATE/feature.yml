@@ -1,0 +1,33 @@
+name: Performance proposal
+description: Propose a measured, bounded and reversible improvement
+title: "[Proposal]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Measurable outcome
+      description: FPS, 1% low, frametime variance, latency, startup time, CPU use, or another repeatable metric.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Supported scope
+      description: OS, hardware, driver and capability requirements.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Before/after evidence
+      description: At least three comparable runs and normal variance.
+    validations:
+      required: true
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Detection and rollback
+      description: How unsupported systems are skipped and how the exact original state is restored.
+    validations:
+      required: true

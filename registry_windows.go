@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 
 	"golang.org/x/sys/windows/registry"
@@ -98,21 +100,6 @@ func applyRegistry(change RegChange) error {
 	if err != nil {
 		return err
 	}
-	if change.Delete {
-		key, err := registry.OpenKey(root, path, registry.SET_VALUE|registryView())
-		if errors.Is(err, registry.ErrNotExist) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		defer key.Close()
-		err = key.DeleteValue(change.Name)
-		if errors.Is(err, registry.ErrNotExist) {
-			return nil
-		}
-		return err
-	}
 	key, _, err := registry.CreateKey(root, path, registry.SET_VALUE|registry.QUERY_VALUE|registryView())
 	if err != nil {
 		return err
@@ -174,15 +161,42 @@ func restoreRegistry(snapshot RegSnapshot) error {
 	}
 }
 
+func registrySnapshotMatches(expected RegSnapshot) (bool, error) {
+	actual, err := snapshotRegistry(expected.Change)
+	if err != nil {
+		return false, err
+	}
+	if actual.Existed != expected.Existed {
+		return false, nil
+	}
+	if !expected.Existed {
+		return true, nil
+	}
+	if actual.Kind != expected.Kind {
+		return false, nil
+	}
+	switch expected.Kind {
+	case registry.DWORD:
+		return actual.DWord == expected.DWord, nil
+	case registry.QWORD:
+		return actual.QWord == expected.QWord, nil
+	case registry.SZ, registry.EXPAND_SZ:
+		return actual.String == expected.String, nil
+	case registry.MULTI_SZ:
+		return slices.Equal(actual.Strings, expected.Strings), nil
+	case registry.BINARY:
+		return bytes.Equal(actual.Binary, expected.Binary), nil
+	default:
+		return false, fmt.Errorf("неподдерживаемый тип snapshot %d", expected.Kind)
+	}
+}
+
 func registryMatches(change RegChange) (bool, string, error) {
 	snapshot, err := snapshotRegistry(change)
 	if err != nil {
 		return false, "", err
 	}
 	current := formatSnapshot(snapshot)
-	if change.Delete {
-		return !snapshot.Existed, current, nil
-	}
 	if !snapshot.Existed || snapshot.Kind != change.Kind {
 		return false, current, nil
 	}
@@ -217,9 +231,6 @@ func formatSnapshot(snapshot RegSnapshot) string {
 }
 
 func formatDesired(change RegChange) string {
-	if change.Delete {
-		return "удалить значение"
-	}
 	switch change.Kind {
 	case registry.DWORD:
 		return fmt.Sprintf("%d", change.DWord)
@@ -228,17 +239,4 @@ func formatDesired(change RegChange) string {
 	default:
 		return fmt.Sprintf("тип %d", change.Kind)
 	}
-}
-
-func readDWord(hive, path, name string) (uint32, bool) {
-	snapshot, err := snapshotRegistry(RegChange{Hive: hive, Path: path, Name: name})
-	if err != nil || !snapshot.Existed || snapshot.Kind != registry.DWORD {
-		return 0, false
-	}
-	return snapshot.DWord, true
-}
-
-func valueExists(hive, path, name string) (RegSnapshot, bool) {
-	snapshot, err := snapshotRegistry(RegChange{Hive: hive, Path: path, Name: name})
-	return snapshot, err == nil && snapshot.Existed
 }

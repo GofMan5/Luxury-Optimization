@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -21,17 +22,15 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
-	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/mgr"
 )
 
 var guidPattern = regexp.MustCompile(`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`)
 
 var maximumPowerSettings = []PowerSetting{
 	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "bc5038f7-23e0-4960-96da-33abaf5935ec", Value: 100, Name: "Максимальное состояние CPU от сети"},
+	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "893dee8e-2bef-41e0-89c6-b55d0929964c", Value: 5, Name: "Минимальное состояние CPU 5% от сети"},
 	{Subgroup: "501a4d13-42af-4429-9fd1-a8218c268e20", Setting: "ee12f906-d277-404b-b6da-e5fa1a576df5", Value: 0, Name: "PCIe Link State Power Management off"},
 	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", Value: 0, Name: "USB selective suspend off"},
-	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "d4e98f31-5ffe-4ce1-be31-1b38b384c009", Value: 0, Name: "USB hub suspend timeout off"},
 }
 
 var optionalMaximumPowerSettings = []PowerSetting{
@@ -94,8 +93,19 @@ func programDataDirectory() (string, error) {
 	return filepath.Clean(path), nil
 }
 
-func localTempDirectory() (string, error) {
+func localAppDataDirectory() (string, error) {
 	path, err := windows.KnownFolderPath(windows.FOLDERID_LocalAppData, windows.KF_FLAG_DEFAULT)
+	if err != nil {
+		return "", err
+	}
+	if !filepath.IsAbs(path) {
+		return "", errors.New("LocalAppData directory is not absolute")
+	}
+	return filepath.Clean(path), nil
+}
+
+func localTempDirectory() (string, error) {
+	path, err := localAppDataDirectory()
 	if err != nil {
 		return "", err
 	}
@@ -350,7 +360,7 @@ func runElevatedAndWait(args []string) error {
 	if err != nil {
 		return err
 	}
-	resultFile, err := os.CreateTemp(temporary, "GofMan3-result-*.json")
+	resultFile, err := os.CreateTemp(temporary, "Luxury-Optimization-result-*.json")
 	if err != nil {
 		return err
 	}
@@ -420,7 +430,7 @@ func protectResultFile(file *os.File) error {
 	if err != nil {
 		return err
 	}
-	descriptor, err := windows.SecurityDescriptorFromString(fmt.Sprintf(`D:P(A;;GRGW;;;%s)(A;;FA;;;SY)(A;;FA;;;BA)`, sid))
+	descriptor, err := windows.SecurityDescriptorFromString(fmt.Sprintf(`D:P(A;;FA;;;%s)(A;;FA;;;SY)(A;;FA;;;BA)`, sid))
 	if err != nil {
 		return err
 	}
@@ -428,7 +438,31 @@ func protectResultFile(file *os.File) error {
 	if err != nil {
 		return err
 	}
-	return windows.SetSecurityInfo(windows.Handle(file.Fd()), windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil)
+	var original windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(windows.Handle(file.Fd()), &original); err != nil {
+		return fmt.Errorf("query ACL source: %w", err)
+	}
+	pointer, err := windows.UTF16PtrFromString(file.Name())
+	if err != nil {
+		return err
+	}
+	handle, err := windows.CreateFile(pointer, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return fmt.Errorf("open ACL target: %w", err)
+	}
+	defer windows.CloseHandle(handle)
+	var secured windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(handle, &secured); err != nil {
+		return fmt.Errorf("query ACL target: %w", err)
+	}
+	if secured.FileAttributes&(windows.FILE_ATTRIBUTE_REPARSE_POINT|windows.FILE_ATTRIBUTE_DIRECTORY) != 0 ||
+		secured.VolumeSerialNumber != original.VolumeSerialNumber || secured.FileIndexHigh != original.FileIndexHigh || secured.FileIndexLow != original.FileIndexLow {
+		return errors.New("ACL target identity mismatch")
+	}
+	if err := windows.SetSecurityInfo(handle, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil); err != nil {
+		return fmt.Errorf("set ACL: %w", err)
+	}
+	return nil
 }
 
 func writeElevatedResult(path string, parentPID uint32, operationErr error) error {
@@ -436,7 +470,7 @@ func writeElevatedResult(path string, parentPID uint32, operationErr error) erro
 	if err != nil {
 		return err
 	}
-	if !strings.EqualFold(filepath.Clean(filepath.Dir(path)), filepath.Clean(parentTemp)) || !strings.HasPrefix(filepath.Base(path), "GofMan3-result-") || !strings.HasSuffix(filepath.Base(path), ".json") {
+	if !strings.EqualFold(filepath.Clean(filepath.Dir(path)), filepath.Clean(parentTemp)) || !strings.HasPrefix(filepath.Base(path), "Luxury-Optimization-result-") || !strings.HasSuffix(filepath.Base(path), ".json") {
 		return errors.New("недопустимый путь result-файла")
 	}
 	pointer, err := windows.UTF16PtrFromString(path)
@@ -485,21 +519,51 @@ func writeElevatedResult(path string, parentPID uint32, operationErr error) erro
 }
 
 func acquireOperationLock() (func(), error) {
-	name, _ := windows.UTF16PtrFromString(`Global\GofMan3Optimizer-Transaction-v1`)
-	handle, err := windows.CreateMutex(nil, true, name)
+	return acquireNamedMutex(`Global\GofMan3Optimizer-Transaction-v1`, "другая операция оптимизатора уже выполняется")
+}
+
+func acquireBoostSessionLock() (func(), error) {
+	return acquireNamedMutex(`Local\GofMan3Optimizer-BoostSession-v1`, "другая игровая boost-сессия уже выполняется")
+}
+
+func acquireGameProfilesLock() (func(), error) {
+	return acquireNamedMutex(`Local\GofMan3Optimizer-GameProfiles-v1`, "игровые профили уже изменяются другим процессом")
+}
+
+func acquireNamedMutex(value, busyMessage string) (func(), error) {
+	name, _ := windows.UTF16PtrFromString(value)
+	handle, err := windows.CreateMutex(nil, false, name)
 	if errors.Is(err, windows.ERROR_ALREADY_EXISTS) {
 		if handle != 0 {
 			windows.CloseHandle(handle)
 		}
-		return nil, errors.New("другая операция оптимизатора уже выполняется")
+		return nil, errors.New(busyMessage)
 	}
 	if err != nil {
 		return nil, err
 	}
 	return func() {
-		_ = windows.ReleaseMutex(handle)
 		_ = windows.CloseHandle(handle)
 	}, nil
+}
+
+func checkBoostSession(required bool) error {
+	name, _ := windows.UTF16PtrFromString(`Local\GofMan3Optimizer-BoostSession-v1`)
+	handle, err := windows.CreateMutex(nil, false, name)
+	active := errors.Is(err, windows.ERROR_ALREADY_EXISTS)
+	if handle != 0 {
+		_ = windows.CloseHandle(handle)
+	}
+	if err != nil && !active {
+		return err
+	}
+	if required && !active {
+		return errors.New("internal boost-session lock is missing")
+	}
+	if !required && active {
+		return errors.New("игровая boost-сессия активна; дождитесь выхода игры")
+	}
+	return nil
 }
 
 func activePowerGUID() (string, error) {
@@ -536,7 +600,7 @@ func createPerformancePlan(guid string) ([]PowerSetting, error) {
 		return nil, fmt.Errorf("создание отдельной схемы производительности: %w", err)
 	}
 	settings := availableMaximumPowerSettings(guid)
-	commands := [][]string{{"/changename", guid, "GofMan3 Max Performance", "Обратимая игровая схема"}}
+	commands := [][]string{{"/changename", guid, "Luxury Optimization Max Performance", "Обратимая игровая схема"}}
 	for _, setting := range settings {
 		commands = append(commands, []string{"/setacvalueindex", guid, setting.Subgroup, setting.Setting, fmt.Sprint(setting.Value)})
 	}
@@ -614,6 +678,13 @@ func restorePowerPlan(snapshot PowerSnapshot) error {
 		if _, err := runCommand(15*time.Second, systemTool("powercfg.exe"), "/setactive", snapshot.PreviousGUID); err != nil {
 			return err
 		}
+		active, err := activePowerGUID()
+		if err != nil || !strings.EqualFold(active, snapshot.PreviousGUID) {
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf("после отката активна схема %s вместо %s", active, snapshot.PreviousGUID)
+		}
 	}
 	if snapshot.CreatedGUID != "" {
 		exists, err := powerSchemeExists(snapshot.CreatedGUID)
@@ -623,6 +694,12 @@ func restorePowerPlan(snapshot PowerSnapshot) error {
 		if exists {
 			if _, err := runCommand(15*time.Second, systemTool("powercfg.exe"), "/delete", snapshot.CreatedGUID); err != nil {
 				return err
+			}
+			if exists, err := powerSchemeExists(snapshot.CreatedGUID); err != nil || exists {
+				if err != nil {
+					return err
+				}
+				return errors.New("временная схема питания осталась после отката")
 			}
 		}
 	}
@@ -688,6 +765,24 @@ func networkPropertyNeedsChange(values []string) bool {
 	return false
 }
 
+func verifyRestoredNetwork(expected []NetProperty) error {
+	current, err := queryNetworkProperties()
+	if err != nil {
+		return err
+	}
+	lookup := make(map[string][]string, len(current))
+	for _, property := range current {
+		lookup[strings.ToLower(property.InterfaceGUID)+"|"+strings.ToLower(property.Keyword)] = property.Values
+	}
+	for _, property := range expected {
+		values, ok := lookup[strings.ToLower(property.InterfaceGUID)+"|"+strings.ToLower(property.Keyword)]
+		if !ok || !slices.Equal(values, property.Values) {
+			return fmt.Errorf("ethernet-параметр %s/%s не совпал с backup после отката", property.AdapterName, property.Keyword)
+		}
+	}
+	return nil
+}
+
 func setNetworkProperties(properties []NetProperty, restore bool) error {
 	if len(properties) == 0 {
 		return nil
@@ -737,157 +832,11 @@ foreach ($item in $items) {
 	return nil
 }
 
-func captureFirewallRuntime() (FirewallState, error) {
-	manager, err := mgr.Connect()
-	if err != nil {
-		return FirewallState{}, err
-	}
-	defer manager.Disconnect()
-	service, err := manager.OpenService("MpsSvc")
-	if err != nil {
-		return FirewallState{}, err
-	}
-	defer service.Close()
-	status, err := service.Query()
-	if err != nil {
-		return FirewallState{}, err
-	}
-	config, err := service.Config()
-	if err != nil {
-		return FirewallState{}, err
-	}
-	return FirewallState{Captured: true, WasRunning: status.State == svc.Running, StartType: config.StartType}, nil
-}
-
-func repairFirewallRuntime() error {
-	manager, err := mgr.Connect()
-	if err != nil {
-		return err
-	}
-	defer manager.Disconnect()
-	service, err := manager.OpenService("MpsSvc")
-	if err != nil {
-		return err
-	}
-	defer service.Close()
-	config, err := service.Config()
-	if err != nil {
-		return err
-	}
-	config.StartType = mgr.StartAutomatic
-	if err := service.UpdateConfig(config); err != nil {
-		return err
-	}
-	status, err := service.Query()
-	if err != nil {
-		return err
-	}
-	if status.State != svc.Running {
-		if err := service.Start(); err != nil {
-			return err
-		}
-		if err := waitServiceState(service, svc.Running, 15*time.Second); err != nil {
-			return err
-		}
-	}
-	_, err = runCommand(20*time.Second, systemTool("netsh.exe"), "advfirewall", "set", "allprofiles", "state", "on")
-	return err
-}
-
-func verifyFirewallRuntime() error {
-	state, err := captureFirewallRuntime()
-	if err != nil {
-		return err
-	}
-	if !state.WasRunning || state.StartType != mgr.StartAutomatic {
-		return errors.New("служба Windows Firewall не запущена автоматически")
-	}
-	return nil
-}
-
-func restoreFirewallRuntime(runtimeState FirewallState, snapshots []RegSnapshot) error {
-	byID := make(map[string]RegSnapshot, len(snapshots))
-	for _, snapshot := range snapshots {
-		byID[snapshot.Change.ID] = snapshot
-	}
-	var problems []error
-	for _, item := range []struct{ id, profile string }{
-		{"repair-firewall-domain", "domainprofile"},
-		{"repair-firewall-private", "privateprofile"},
-		{"repair-firewall-public", "publicprofile"},
-	} {
-		snapshot, ok := byID[item.id]
-		if !ok || !snapshot.Existed {
-			continue
-		}
-		state := "off"
-		if snapshot.DWord != 0 {
-			state = "on"
-		}
-		if _, err := runCommand(20*time.Second, systemTool("netsh.exe"), "advfirewall", "set", item.profile, "state", state); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if runtimeState.Captured {
-		manager, err := mgr.Connect()
-		if err != nil {
-			problems = append(problems, err)
-		} else {
-			service, openErr := manager.OpenService("MpsSvc")
-			if openErr != nil {
-				problems = append(problems, openErr)
-			} else {
-				config, configErr := service.Config()
-				if configErr == nil {
-					config.StartType = runtimeState.StartType
-					configErr = service.UpdateConfig(config)
-				}
-				if configErr != nil {
-					problems = append(problems, configErr)
-				}
-				status, queryErr := service.Query()
-				if queryErr != nil {
-					problems = append(problems, queryErr)
-				} else if runtimeState.WasRunning && status.State != svc.Running {
-					if startErr := service.Start(); startErr != nil {
-						problems = append(problems, startErr)
-					} else if waitErr := waitServiceState(service, svc.Running, 15*time.Second); waitErr != nil {
-						problems = append(problems, waitErr)
-					}
-				} else if !runtimeState.WasRunning && status.State == svc.Running {
-					if _, stopErr := service.Control(svc.Stop); stopErr != nil {
-						problems = append(problems, stopErr)
-					} else if waitErr := waitServiceState(service, svc.Stopped, 15*time.Second); waitErr != nil {
-						problems = append(problems, waitErr)
-					}
-				}
-				service.Close()
-			}
-			manager.Disconnect()
-		}
-	}
-	return errors.Join(problems...)
-}
-
-func waitServiceState(service *mgr.Service, desired svc.State, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		status, err := service.Query()
-		if err != nil {
-			return err
-		}
-		if status.State == desired {
-			return nil
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	return fmt.Errorf("таймаут ожидания состояния службы %d", desired)
-}
-
 func appDataDir() (string, error) {
 	base, err := programDataDirectory()
 	if err != nil {
 		return "", err
 	}
+	// Keep the v3 state directory so existing sealed backups remain restorable.
 	return filepath.Join(base, "GofMan3 Optimizer"), nil
 }

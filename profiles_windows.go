@@ -15,18 +15,14 @@ func profileByID(id string) (Profile, error) {
 		p := recommendedProfile()
 		p.ID = profileMaximum
 		p.Name = "Максимальная производительность"
-		p.Description = "Безопасная база плюс отключение системного power throttling, отдельная схема питания и поддерживаемые low-latency параметры Ethernet."
+		p.Description = "Игровая база плюс поддерживаемые CPU, AC power-plan и Ethernet low-latency настройки."
 		p.PerformancePlan = true
 		p.NetworkLatency = true
-		p.RebootRequired = true
 		p.Changes = append(p.Changes,
-			dword("power-throttling", "Питание", "Отключить системный power throttling для всех процессов", "HKLM", `SYSTEM\CurrentControlSet\Control\Power\PowerThrottling`, "PowerThrottlingOff", 1),
 			dword("startup-delay", "Интерфейс", "Убрать задержку запуска автозагрузки после входа", "HKCU", `SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Serialize`, "StartupDelayInMSec", 0),
 			stringValue("menu-show-delay", "Интерфейс", "Убрать задержку открытия меню", "HKCU", `Control Panel\Desktop`, "MenuShowDelay", "0"),
 		)
 		return p, nil
-	case profileRepair:
-		return repairProfile(), nil
 	default:
 		return Profile{}, fmt.Errorf("неизвестный профиль %q", id)
 	}
@@ -35,8 +31,8 @@ func profileByID(id string) (Profile, error) {
 func recommendedProfile() Profile {
 	return Profile{
 		ID:          profileRecommended,
-		Name:        "Рекомендуемая оптимизация",
-		Description: "Обратимые игровые и интерфейсные настройки без отключения защит Windows.",
+		Name:        "Рекомендуемая игровая оптимизация",
+		Description: "Обратимые игровые и интерфейсные настройки без отключения системной защиты.",
 		Changes: []RegChange{
 			dword("game-mode-allow", "Игры", "Разрешить автоматический Game Mode", "HKCU", `SOFTWARE\Microsoft\GameBar`, "AllowAutoGameMode", 1),
 			dword("game-mode-enable", "Игры", "Включить Game Mode", "HKCU", `SOFTWARE\Microsoft\GameBar`, "AutoGameModeEnabled", 1),
@@ -52,50 +48,12 @@ func recommendedProfile() Profile {
 	}
 }
 
-func repairProfile() Profile {
-	changes := []RegChange{
-		deleteValue("repair-csrss-cpu", "Безопасность", "Удалить принудительный realtime-приоритет CSRSS", "HKLM", `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\csrss.exe\PerfOptions`, "CpuPriorityClass"),
-		deleteValue("repair-csrss-io", "Безопасность", "Удалить принудительный I/O-приоритет CSRSS", "HKLM", `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\csrss.exe\PerfOptions`, "IoPriority"),
-		deleteValue("repair-spectre-value", "Безопасность", "Вернуть управление CPU mitigations системе", "HKLM", `SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`, "FeatureSettings"),
-		deleteValue("repair-spectre-override", "Безопасность", "Удалить отключение Spectre/Meltdown", "HKLM", `SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`, "FeatureSettingsOverride"),
-		deleteValue("repair-spectre-mask", "Безопасность", "Удалить маску отключения Spectre/Meltdown", "HKLM", `SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`, "FeatureSettingsOverrideMask"),
-		deleteValue("repair-sehop", "Безопасность", "Вернуть системное управление SEHOP", "HKLM", `SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`, "KernelSEHOPEnabled"),
-		deleteValue("repair-exception-chain", "Безопасность", "Вернуть проверку exception chain", "HKLM", `SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`, "DisableExceptionChainValidation"),
-		deleteValue("repair-cfg", "Безопасность", "Вернуть системное управление CFG", "HKLM", `SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management`, "EnableCfg"),
-		deleteValue("repair-security-toast", "Безопасность", "Вернуть уведомления безопасности и обслуживания", "HKCU", `Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.SecurityAndMaintenance`, "Enabled"),
-		deleteValue("repair-security-notifications", "Безопасность", "Удалить отключение уведомлений Windows Security", "HKLM", `SOFTWARE\Microsoft\Windows Defender Security Center\Notifications`, "DisableNotifications"),
-		deleteValue("repair-security-policy-notifications", "Безопасность", "Удалить политику отключения уведомлений Windows Security", "HKLM", `SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications`, "DisableNotifications"),
-		deleteValue("repair-security-policy-enhanced", "Безопасность", "Удалить политику отключения расширенных уведомлений Windows Security", "HKLM", `SOFTWARE\Policies\Microsoft\Windows Defender Security Center\Notifications`, "DisableEnhancedNotifications"),
-		deleteValue("repair-defender-reporting-notifications", "Безопасность", "Вернуть расширенные уведомления Defender", "HKLM", `SOFTWARE\Policies\Microsoft\Windows Defender\Reporting`, "DisableEnhancedNotifications"),
-		deleteValue("repair-global-toasts", "Безопасность", "Удалить глобальное отключение системных уведомлений", "HKCU", `SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings`, "NOC_GLOBAL_SETTING_TOASTS_ENABLED"),
-		deleteValue("repair-defender", "Безопасность", "Удалить устаревшую политику отключения Defender", "HKLM", `SOFTWARE\Policies\Microsoft\Windows Defender`, "DisableAntiSpyware"),
-		deleteValue("repair-nvidia-preemption", "GPU", "Удалить недокументированное отключение GPU preemption", "HKLM", `SYSTEM\CurrentControlSet\Services\nvlddmkm`, "DisablePreemption"),
-		deleteValue("repair-nvidia-cuda-preemption", "GPU", "Удалить недокументированное отключение CUDA preemption", "HKLM", `SYSTEM\CurrentControlSet\Services\nvlddmkm`, "DisableCudaContextPreemption"),
-		deleteValue("repair-nvidia-write-combining", "GPU", "Удалить недокументированное отключение write combining", "HKLM", `SYSTEM\CurrentControlSet\Services\nvlddmkm`, "DisableWriteCombining"),
-		dword("repair-firewall-domain", "Безопасность", "Включить Firewall для доменного профиля", "HKLM", `SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile`, "EnableFirewall", 1),
-		dword("repair-firewall-private", "Безопасность", "Включить Firewall для частного профиля", "HKLM", `SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile`, "EnableFirewall", 1),
-		dword("repair-firewall-public", "Безопасность", "Включить Firewall для публичного профиля", "HKLM", `SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile`, "EnableFirewall", 1),
-	}
-	return Profile{
-		ID:             profileRepair,
-		Name:           "Ремонт опасных твиков старого BAT",
-		Description:    "Удаляет известные опасные значения старого скрипта, возвращает уведомления Windows Security и включает Firewall. Перед изменениями создаётся точная резервная копия.",
-		Changes:        changes,
-		RepairFirewall: true,
-		RebootRequired: true,
-	}
-}
-
 func dword(id, category, description, hive, path, name string, value uint32) RegChange {
 	return RegChange{ID: id, Category: category, Description: description, Hive: hive, Path: path, Name: name, Kind: registry.DWORD, DWord: value}
 }
 
 func stringValue(id, category, description, hive, path, name, value string) RegChange {
 	return RegChange{ID: id, Category: category, Description: description, Hive: hive, Path: path, Name: name, Kind: registry.SZ, String: value}
-}
-
-func deleteValue(id, category, description, hive, path, name string) RegChange {
-	return RegChange{ID: id, Category: category, Description: description, Hive: hive, Path: path, Name: name, Delete: true}
 }
 
 func validateProfile(p Profile) error {

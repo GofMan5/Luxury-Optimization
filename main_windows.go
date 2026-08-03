@@ -11,10 +11,11 @@ import (
 	"strings"
 )
 
-var version = "2.2.1-dev"
-
 func main() {
 	args, resultPath := stripResultFile(os.Args[1:])
+	if (len(args) == 0 || args[0] != "update") && internalParentPID(args) == 0 {
+		maybeAutoUpdate()
+	}
 	err := run(args)
 	if resultPath != "" {
 		if parentPID := internalParentPID(args); parentPID != 0 {
@@ -22,7 +23,7 @@ func main() {
 		}
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Ошибка:", err)
+		fmt.Fprintln(os.Stderr, "Ошибка:", displayText(err.Error()))
 		os.Exit(1)
 	}
 }
@@ -64,14 +65,28 @@ func run(args []string) error {
 		return planCommand(args[1:])
 	case "apply":
 		return applyCommand(args[1:])
-	case "repair-legacy":
-		return repairCommand(args[1:])
 	case "restore":
 		return restoreCommand(args[1:])
+	case "boost":
+		return boostCommand(args[1:])
 	case "clean":
 		return cleanCommand(args[1:])
+	case "startup":
+		return startupCommand(args[1:])
+	case "games":
+		return gamesCommand(args[1:])
+	case "services":
+		return servicesCommand(args[1:])
+	case "network":
+		return networkCommand(args[1:])
+	case "benchmark":
+		return benchmarkCommand(args[1:])
+	case "backups":
+		return backupsCommand(args[1:])
+	case "update":
+		return updateCommand(args[1:])
 	case "version", "--version", "-v":
-		fmt.Println("GofMan3 Optimizer", version)
+		fmt.Println(productName, version)
 		return nil
 	case "help", "--help", "-h":
 		printHelp()
@@ -88,6 +103,9 @@ func auditCommand(args []string) error {
 	if err := set.Parse(args); err != nil {
 		return err
 	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы audit")
+	}
 	audit := collectAudit()
 	data, err := json.MarshalIndent(audit, "", "  ")
 	if err != nil {
@@ -97,7 +115,7 @@ func auditCommand(args []string) error {
 		if err := os.WriteFile(*out, data, 0o600); err != nil {
 			return err
 		}
-		fmt.Println("Отчёт сохранён:", *out)
+		fmt.Println("Отчёт сохранён:", displayText(*out))
 	}
 	if *jsonOnly {
 		fmt.Println(string(data))
@@ -109,10 +127,13 @@ func auditCommand(args []string) error {
 
 func planCommand(args []string) error {
 	set := flag.NewFlagSet("plan", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "recommended, maximum или repair-legacy")
+	profileID := set.String("profile", profileRecommended, "recommended или maximum")
 	jsonOnly := set.Bool("json", false, "вывести JSON")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы plan")
 	}
 	plan, err := buildPlan(*profileID)
 	if err != nil {
@@ -136,8 +157,15 @@ func applyCommand(args []string) error {
 	yes := set.Bool("yes", false, "подтвердить")
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
+	boostSession := set.Bool("boost-session", false, "internal: активная игровая сессия")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы apply")
+	}
+	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
+		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
 	}
 	if *profileID != profileRecommended && *profileID != profileMaximum {
 		return errors.New("apply поддерживает только recommended и maximum")
@@ -161,60 +189,14 @@ func applyCommand(args []string) error {
 		return errors.New("операция отменена")
 	}
 	if !isAdministrator() {
-		sid, err := currentUserSID()
-		if err != nil {
-			return err
-		}
-		_ = sid // SID is derived again from the live parent token in the elevated child.
 		return runElevatedAndWait([]string{"apply", "--profile", *profileID, "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
 	}
-	path, err := applyProfile(*profileID)
+	path, err := applyProfile(*profileID, *boostSession)
 	if err != nil {
 		return err
 	}
 	if !*quiet {
-		fmt.Println("Готово. Резервная копия:", path)
-	}
-	return nil
-}
-
-func repairCommand(args []string) error {
-	set := flag.NewFlagSet("repair-legacy", flag.ContinueOnError)
-	yes := set.Bool("yes", false, "подтвердить")
-	quiet := set.Bool("quiet", false, "не печатать результат")
-	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
-	if err := set.Parse(args); err != nil {
-		return err
-	}
-	if !*yes && !confirm("Удалить известные опасные твики старого BAT и включить Firewall?") {
-		return errors.New("операция отменена")
-	}
-	if *parentPID != 0 {
-		if !isAdministrator() {
-			return errors.New("parent-pid разрешён только elevated-процессу")
-		}
-		sid, err := userSIDFromOptimizerProcess(uint32(*parentPID))
-		if err != nil {
-			return err
-		}
-		if err := setRegistryUserSID(sid); err != nil {
-			return err
-		}
-	}
-	if !isAdministrator() {
-		sid, err := currentUserSID()
-		if err != nil {
-			return err
-		}
-		_ = sid
-		return runElevatedAndWait([]string{"repair-legacy", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
-	}
-	path, err := applyProfile(profileRepair)
-	if err != nil {
-		return err
-	}
-	if !*quiet {
-		fmt.Println("Ремонт завершён. Резервная копия:", path)
+		fmt.Println("Готово. Резервная копия:", displayText(path))
 	}
 	return nil
 }
@@ -224,10 +206,25 @@ func restoreCommand(args []string) error {
 	yes := set.Bool("yes", false, "подтвердить")
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
+	boostSession := set.Bool("boost-session", false, "internal: активная игровая сессия")
+	backupID := set.String("id", "", "ID из backups list")
 	if err := set.Parse(args); err != nil {
 		return err
 	}
-	if !*yes && !confirm("Восстановить последнюю применённую резервную копию?") {
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы restore")
+	}
+	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
+		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
+	}
+	if *backupID != "" && !backupIDPattern.MatchString(*backupID) {
+		return errors.New("неверный backup ID")
+	}
+	question := "Восстановить последнюю применённую резервную копию?"
+	if *backupID != "" {
+		question = "Восстановить резервную копию " + *backupID + "?"
+	}
+	if !*yes && !confirm(question) {
 		return errors.New("операция отменена")
 	}
 	requestSID := ""
@@ -248,14 +245,24 @@ func restoreCommand(args []string) error {
 		}
 	}
 	if !isAdministrator() {
-		return runElevatedAndWait([]string{"restore", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())})
+		elevatedArgs := []string{"restore", "--yes", "--quiet", "--parent-pid", strconv.Itoa(os.Getpid())}
+		if *backupID != "" {
+			elevatedArgs = append(elevatedArgs, "--id", *backupID)
+		}
+		return runElevatedAndWait(elevatedArgs)
 	}
-	path, err := restoreLatest(requestSID)
+	var path string
+	var err error
+	if *backupID == "" {
+		path, err = restoreLatest(requestSID, *boostSession)
+	} else {
+		path, err = restoreSelected(requestSID, *backupID, *boostSession)
+	}
 	if err != nil {
 		return err
 	}
 	if !*quiet {
-		fmt.Println("Восстановлено:", path)
+		fmt.Println("Восстановлено:", displayText(path))
 	}
 	return nil
 }
@@ -267,6 +274,9 @@ func cleanCommand(args []string) error {
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	if err := set.Parse(args); err != nil {
 		return err
+	}
+	if set.NArg() != 0 {
+		return errors.New("лишние аргументы clean")
 	}
 	if !*yes && !confirm("Удалить временные файлы старше "+strconv.Itoa(*days)+" дней?") {
 		return errors.New("операция отменена")
@@ -289,50 +299,60 @@ func confirm(question string) bool {
 }
 
 func printAudit(audit Audit) {
-	fmt.Println("GofMan3 Optimizer", audit.Version)
+	fmt.Println(productName, audit.Version)
 	for _, cpu := range audit.Hardware.CPUs {
-		fmt.Printf("CPU: %s — %d ядер / %d потоков\n", cpu.Name, cpu.Cores, cpu.Logical)
+		fmt.Printf("CPU: %s — %d ядер / %d потоков\n", displayText(cpu.Name), cpu.Cores, cpu.Logical)
 	}
 	for _, gpu := range audit.Hardware.GPUs {
-		fmt.Printf("GPU: %s (%s), драйвер %s\n", gpu.Name, gpu.Vendor, gpu.DriverVersion)
+		fmt.Printf("GPU: %s (%s), драйвер %s\n", displayText(gpu.Name), displayText(gpu.Vendor), displayText(gpu.DriverVersion))
 	}
 	fmt.Println("Активная схема:", audit.ActivePowerGUID)
 	if len(audit.Findings) == 0 {
-		fmt.Println("Опасные следы старого BAT не обнаружены.")
+		fmt.Println("Рекомендуемый игровой профиль уже применён полностью.")
 	}
 	for _, finding := range audit.Findings {
-		fmt.Printf("[%s] %s — %s\n", strings.ToUpper(finding.Severity), finding.Title, finding.Evidence)
+		fmt.Printf("%s — %s\n", displayText(finding.Title), displayText(finding.Evidence))
 	}
 	for _, warning := range audit.Warnings {
-		fmt.Println("Предупреждение:", warning)
+		fmt.Println("Предупреждение:", displayText(warning))
 	}
 }
 
 func printPlan(plan Plan) {
-	fmt.Println(plan.Profile.Name)
+	fmt.Println(displayText(plan.Profile.Name))
 	for _, item := range plan.Items {
 		marker := "="
 		if item.Changed {
 			marker = "→"
 		}
-		fmt.Printf("[%s] %s: %s %s %s\n", item.Category, item.Name, item.Current, marker, item.Desired)
+		fmt.Printf("[%s] %s: %s %s %s\n", displayText(item.Category), displayText(item.Name), displayText(item.Current), marker, displayText(item.Desired))
 	}
 	for _, warning := range plan.Warnings {
-		fmt.Println("Предупреждение:", warning)
+		fmt.Println("Предупреждение:", displayText(warning))
 	}
 }
 
 func printHelp() {
-	fmt.Print(`GofMan3 Optimizer
+	fmt.Print(`Luxury Optimization
 
 Без аргументов запускается mouse-first TUI.
 
   audit [--json] [--out report.json]   read-only аудит
-  plan --profile recommended|maximum|repair-legacy
+  plan --profile recommended|maximum
                                         точный план без изменений
   apply --profile recommended|maximum  применить с backup и проверкой
-  repair-legacy                        убрать опасные следы старого BAT
-  restore                              откатить последнюю операцию
+  boost --game C:\Games\Game.exe --profile maximum [--priority above-normal] [--affinity 0xFF] -- [аргументы игры]
+                                        применить профиль только на время игры
+  startup list [--json]                показать registry-автозагрузку
+  startup disable|enable --name NAME   обратимо управлять HKCU Run
+  games scan [--json]                  найти Steam, Epic и Xbox игры
+  games add|list|run|remove            сохранить и запускать per-game профили
+  services list [--json]               read-only список служб Windows
+  network interfaces|test              интерфейсы или TCP latency/jitter
+  benchmark template|compare           сравнить FPS/1% low/p95 frametime
+  backups list [--json]                sealed restore center (нужен admin)
+  update check|install|enable|disable  обновления из GitHub Releases с SHA-256
+  restore [--id BACKUP_ID]             откатить последнюю или выбранную операцию
   clean --days 2                       безопасно очистить старые temp-файлы
   version                              версия
 `)

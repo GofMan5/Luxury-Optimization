@@ -1,9 +1,35 @@
+# Generated releases and test artifacts
 /dist/
-/.codex-writeup-output/
-/findings/
-/CRU/
-/ParkControl/
-/Инпутлаг/
-/GTA V Оптимизация/
+/build/
+/coverage/
 *.test
 *.prof
+*.pprof
+*.out
+coverage.out
+*.exe
+
+# Local tooling and agent context
+/.codex/
+/.agents/
+/.codex-writeup-output/
+AGENTS.md
+agents.md
+MEMORY.md
+memory.md
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.log
+
+# Editors and operating systems
+/.idea/
+/.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

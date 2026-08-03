@@ -1,4 +1,4 @@
-module gofman3-optimizer
+module github.com/GofMan5/Luxury-Optimization
 
 go 1.25.0
 

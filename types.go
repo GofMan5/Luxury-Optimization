@@ -5,7 +5,6 @@ import "time"
 const (
 	profileRecommended = "recommended"
 	profileMaximum     = "maximum"
-	profileRepair      = "repair-legacy"
 )
 
 type Hardware struct {
@@ -47,7 +46,6 @@ type RegChange struct {
 	Kind        uint32 `json:"kind"`
 	DWord       uint32 `json:"dword,omitempty"`
 	String      string `json:"string,omitempty"`
-	Delete      bool   `json:"delete,omitempty"`
 }
 
 type Profile struct {
@@ -57,8 +55,6 @@ type Profile struct {
 	Changes         []RegChange `json:"changes"`
 	PerformancePlan bool        `json:"performance_plan"`
 	NetworkLatency  bool        `json:"network_latency"`
-	RepairFirewall  bool        `json:"repair_firewall"`
-	RebootRequired  bool        `json:"reboot_required"`
 }
 
 type RegSnapshot struct {
@@ -116,16 +112,8 @@ type Backup struct {
 	Power           PowerSnapshot `json:"power"`
 	PowerApplied    bool          `json:"power_applied"`
 	Mouse           MouseSnapshot `json:"mouse"`
-	Firewall        FirewallState `json:"firewall"`
 	Error           string        `json:"error,omitempty"`
 	Path            string        `json:"-"`
-}
-
-type FirewallState struct {
-	Captured   bool   `json:"captured"`
-	Applied    bool   `json:"applied"`
-	WasRunning bool   `json:"was_running"`
-	StartType  uint32 `json:"start_type"`
 }
 
 type PlanItem struct {
@@ -144,27 +132,33 @@ type Plan struct {
 }
 
 type Finding struct {
-	Severity string `json:"severity"`
 	ID       string `json:"id"`
 	Title    string `json:"title"`
 	Evidence string `json:"evidence"`
-	Repair   string `json:"repair"`
+	Action   string `json:"action"`
+}
+
+type Capability struct {
+	ID        string `json:"id"`
+	Available bool   `json:"available"`
+	Mode      string `json:"mode"`
+	Detail    string `json:"detail"`
 }
 
 type Audit struct {
-	GeneratedAt     time.Time `json:"generated_at"`
-	Version         string    `json:"version"`
-	Hardware        Hardware  `json:"hardware"`
-	Administrator   bool      `json:"administrator"`
-	ActivePowerGUID string    `json:"active_power_guid,omitempty"`
-	Findings        []Finding `json:"legacy_findings"`
-	Warnings        []string  `json:"warnings,omitempty"`
+	GeneratedAt     time.Time    `json:"generated_at"`
+	Version         string       `json:"version"`
+	Hardware        Hardware     `json:"hardware"`
+	Administrator   bool         `json:"administrator"`
+	ActivePowerGUID string       `json:"active_power_guid,omitempty"`
+	Capabilities    []Capability `json:"capabilities,omitempty"`
+	Findings        []Finding    `json:"optimization_findings"`
+	Warnings        []string     `json:"warnings,omitempty"`
 }
 
 type OperationResult struct {
 	Title      string
 	Summary    string
-	Details    []string
 	BackupPath string
 	Err        error
 }

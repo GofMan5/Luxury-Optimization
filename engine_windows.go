@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-var backupFilePattern = regexp.MustCompile(`^\d{8}T\d{6}\.\d{9}Z\.json$`)
+var (
+	backupFilePattern = regexp.MustCompile(`^\d{8}T\d{6}\.\d{9}Z\.json$`)
+	backupIDPattern   = regexp.MustCompile(`^\d{8}T\d{6}\.\d{9}Z$`)
+)
 
 func buildPlan(profileID string) (Plan, error) {
 	profile, err := profileByID(profileID)
@@ -43,7 +46,7 @@ func buildPlan(profileID string) (Plan, error) {
 		if err != nil {
 			current = "не удалось прочитать: " + err.Error()
 		}
-		plan.Items = append(plan.Items, PlanItem{Category: "Питание", Name: "Создать отдельную обратимую схему максимальной производительности", Current: current, Desired: "новая схема GofMan3 Max Performance", Changed: true})
+		plan.Items = append(plan.Items, PlanItem{Category: "Питание", Name: "Создать отдельную обратимую схему максимальной производительности", Current: current, Desired: "новая схема Luxury Optimization Max Performance", Changed: true})
 		for _, setting := range optionalMaximumPowerSettings {
 			if value, readErr := powerACValue(current, setting.Subgroup, setting.Setting); readErr == nil {
 				plan.Items = append(plan.Items, PlanItem{Category: "Питание", Name: setting.Name, Current: fmt.Sprint(value), Desired: fmt.Sprint(setting.Value), Changed: value != setting.Value})
@@ -63,7 +66,7 @@ func buildPlan(profileID string) (Plan, error) {
 	return plan, nil
 }
 
-func applyProfile(profileID string) (string, error) {
+func applyProfile(profileID string, boostSession bool) (string, error) {
 	if !isAdministrator() {
 		return "", errors.New("для применения нужны права администратора")
 	}
@@ -72,6 +75,9 @@ func applyProfile(profileID string) (string, error) {
 		return "", err
 	}
 	defer releaseLock()
+	if err := checkBoostSession(boostSession); err != nil {
+		return "", err
+	}
 	profile, err := profileByID(profileID)
 	if err != nil {
 		return "", err
@@ -135,12 +141,6 @@ func applyProfile(profileID string) (string, error) {
 			backup.Network = networkChanges(properties)
 		}
 	}
-	if profile.RepairFirewall {
-		backup.Firewall, err = captureFirewallRuntime()
-		if err != nil {
-			return "", err
-		}
-	}
 	if err := saveBackup(&backup); err != nil {
 		return "", err
 	}
@@ -189,15 +189,6 @@ func applyProfile(profileID string) (string, error) {
 			return fail(err)
 		}
 		if err := setNetworkProperties(backup.Network, false); err != nil {
-			return fail(err)
-		}
-	}
-	if profile.RepairFirewall {
-		backup.Firewall.Applied = true
-		if err := saveBackup(&backup); err != nil {
-			return fail(err)
-		}
-		if err := repairFirewallRuntime(); err != nil {
 			return fail(err)
 		}
 	}
@@ -265,11 +256,6 @@ func verifyApplied(profile Profile, backup Backup) error {
 			}
 		}
 	}
-	if profile.RepairFirewall {
-		if err := verifyFirewallRuntime(); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -281,6 +267,8 @@ func rollbackBackup(backup *Backup) error {
 	}
 	if backup.NetworkApplied {
 		if err := setNetworkProperties(backup.Network, true); err != nil {
+			problems = append(problems, err)
+		} else if err := verifyRestoredNetwork(backup.Network); err != nil {
 			problems = append(problems, err)
 		} else {
 			backup.NetworkApplied = false
@@ -298,6 +286,12 @@ func rollbackBackup(backup *Backup) error {
 		if err := restoreRegistry(backup.Registry[i]); err != nil {
 			registryFailed = true
 			problems = append(problems, fmt.Errorf("откат %s: %w", backup.Registry[i].Change.ID, err))
+		} else if matches, err := registrySnapshotMatches(backup.Registry[i]); err != nil || !matches {
+			registryFailed = true
+			if err == nil {
+				err = errors.New("read-back не совпал с backup")
+			}
+			problems = append(problems, fmt.Errorf("проверка отката %s: %w", backup.Registry[i].Change.ID, err))
 		}
 	}
 	if !registryFailed {
@@ -309,18 +303,12 @@ func rollbackBackup(backup *Backup) error {
 	if backup.Mouse.Applied && !registryFailed {
 		if err := applyMouseParameters(backup.Mouse); err != nil {
 			problems = append(problems, err)
+		} else if current, err := captureMouseParameters(); err != nil {
+			problems = append(problems, err)
+		} else if current.Threshold1 != backup.Mouse.Threshold1 || current.Threshold2 != backup.Mouse.Threshold2 || current.Speed != backup.Mouse.Speed {
+			problems = append(problems, errors.New("live-параметры мыши не совпали с backup после отката"))
 		} else {
 			backup.Mouse.Applied = false
-			if err := saveBackup(backup); err != nil {
-				problems = append(problems, err)
-			}
-		}
-	}
-	if backup.Firewall.Applied && !registryFailed {
-		if err := restoreFirewallRuntime(backup.Firewall, backup.Registry); err != nil {
-			problems = append(problems, err)
-		} else {
-			backup.Firewall.Applied = false
 			if err := saveBackup(backup); err != nil {
 				problems = append(problems, err)
 			}
@@ -357,7 +345,18 @@ func profileChangesMouse(changes []RegChange) bool {
 	return wanted["mouse-threshold-1"] && wanted["mouse-threshold-2"] && wanted["mouse-speed"]
 }
 
-func restoreLatest(requestSID string) (string, error) {
+func restoreLatest(requestSID string, boostSession bool) (string, error) {
+	return restoreBackup(requestSID, "", boostSession)
+}
+
+func restoreSelected(requestSID, backupID string, boostSession bool) (string, error) {
+	if !backupIDPattern.MatchString(backupID) {
+		return "", errors.New("неверный ID резервной копии")
+	}
+	return restoreBackup(requestSID, backupID, boostSession)
+}
+
+func restoreBackup(requestSID, backupID string, boostSession bool) (string, error) {
 	if !isAdministrator() {
 		return "", errors.New("для восстановления нужны права администратора")
 	}
@@ -369,7 +368,15 @@ func restoreLatest(requestSID string) (string, error) {
 		return "", err
 	}
 	defer releaseLock()
-	backup, err := loadLatestBackup(requestSID)
+	if err := checkBoostSession(boostSession); err != nil {
+		return "", err
+	}
+	var backup Backup
+	if backupID == "" {
+		backup, err = loadLatestBackup(requestSID)
+	} else {
+		backup, err = loadBackupByID(requestSID, backupID)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -446,18 +453,54 @@ func saveBackup(backup *Backup) error {
 }
 
 func loadLatestBackup(targetSID string) (Backup, error) {
-	base, err := appDataDir()
+	dir, names, err := backupFiles()
 	if err != nil {
 		return Backup{}, err
+	}
+	for _, name := range names {
+		id := strings.TrimSuffix(name, ".json")
+		backup, err := loadBackupFile(filepath.Join(dir, name), id)
+		if err != nil {
+			return Backup{}, err
+		}
+		if backup.TargetUserSID == targetSID && backup.Status != "rolled_back" {
+			return backup, nil
+		}
+	}
+	return Backup{}, errors.New("восстанавливаемые резервные копии этого пользователя не найдены")
+}
+
+func loadBackupByID(targetSID, id string) (Backup, error) {
+	if !backupIDPattern.MatchString(id) {
+		return Backup{}, errors.New("неверный ID резервной копии")
+	}
+	dir, _, err := backupFiles()
+	if err != nil {
+		return Backup{}, err
+	}
+	backup, err := loadBackupFile(filepath.Join(dir, id+".json"), id)
+	if err != nil {
+		return Backup{}, err
+	}
+	if backup.TargetUserSID != targetSID {
+		return Backup{}, errors.New("резервная копия принадлежит другому пользователю")
+	}
+	return backup, nil
+}
+
+func backupFiles() (string, []string, error) {
+	base, err := appDataDir()
+	if err != nil {
+		return "", nil, err
 	}
 	dir := filepath.Join(base, "state")
 	info, err := os.Lstat(dir)
 	if err != nil || !info.IsDir() || isReparsePoint(info) {
-		return Backup{}, errors.New("каталог резервных копий отсутствует или небезопасен")
+		return "", nil, errors.New("каталог резервных копий отсутствует или небезопасен")
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return Backup{}, err
+		return "", nil, err
 	}
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
@@ -467,33 +510,29 @@ func loadLatestBackup(targetSID string) (Backup, error) {
 		}
 	}
 	if len(names) == 0 {
-		return Backup{}, errors.New("резервные копии не найдены")
+		return dir, nil, nil
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(names)))
-	for _, name := range names {
-		path := filepath.Join(dir, name)
-		id := strings.TrimSuffix(name, ".json")
-		if err := verifyBackupSeal(path, id); err != nil {
-			return Backup{}, fmt.Errorf("недоверенный backup %s: %w", name, err)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return Backup{}, err
-		}
-		var backup Backup
-		if err := json.Unmarshal(data, &backup); err != nil {
-			return Backup{}, err
-		}
-		if backup.TargetUserSID != targetSID || backup.Status == "rolled_back" {
-			continue
-		}
-		if backup.ID != id {
-			return Backup{}, errors.New("ID backup не совпадает с именем файла")
-		}
-		backup.Path = path
-		return backup, nil
+	return dir, names, nil
+}
+
+func loadBackupFile(path, id string) (Backup, error) {
+	if err := verifyBackupSeal(path, id); err != nil {
+		return Backup{}, fmt.Errorf("недоверенный backup %s: %w", filepath.Base(path), err)
 	}
-	return Backup{}, errors.New("восстанавливаемые резервные копии этого пользователя не найдены")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Backup{}, err
+	}
+	var backup Backup
+	if err := json.Unmarshal(data, &backup); err != nil {
+		return Backup{}, err
+	}
+	if backup.ID != id {
+		return Backup{}, errors.New("ID backup не совпадает с именем файла")
+	}
+	backup.Path = path
+	return backup, nil
 }
 
 func validateBackup(backup Backup) error {

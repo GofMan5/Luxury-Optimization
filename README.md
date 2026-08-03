@@ -1,109 +1,145 @@
-# GofMan3 Optimizer
+<p align="center">
+  <img src="assets/banner.svg" alt="Luxury Optimization" width="100%">
+</p>
 
-Современная Windows-утилита на Go вместо старого линейного BAT. Основной интерфейс — красивый mouse-first TUI: все действия доступны отдельными кнопками, сочетания клавиш не нужны.
+<p align="center">
+  <a href="https://github.com/GofMan5/Luxury-Optimization/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/GofMan5/Luxury-Optimization/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/GofMan5/Luxury-Optimization/releases"><img alt="Release" src="https://img.shields.io/github/v/release/GofMan5/Luxury-Optimization?display_name=tag&sort=semver"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-d7b665"></a>
+  <a href="go.mod"><img alt="Go 1.25" src="https://img.shields.io/badge/Go-1.25-5c8dbc"></a>
+</p>
 
-## Быстрый старт
+Luxury Optimization is an open-source gaming and system optimization toolkit for Windows and Linux. It favors changes that can be measured, bounded, verified and reversed. Unsupported settings are reported and skipped instead of being guessed.
 
-1. Откройте `GofMan3-Optimizer-amd64.exe` для обычного Intel/AMD ПК или `GofMan3-Optimizer-arm64.exe` для Windows on ARM.
-2. Нажмите **Проверить ПК** — аудит ничего не меняет.
-3. Откройте нужный профиль и прочитайте точный план `текущее → новое`.
-4. Нажмите **Применить этот план** и подтвердите UAC.
-5. Перезагрузите ПК, если применялся максимальный профиль или ремонт.
-6. Если результат не устраивает — нажмите **Откатить последнее**.
+It does not disable Defender, Firewall, mitigations, Windows Update or core services. It does not ship memory cleaners, timer daemons, private GPU registry values, fixed IRQ masks or third-party binaries.
 
-Старый `GofMan3 - optimization.bat` оставлен только как исходный архив. Запускать его не рекомендуется.
+## Platform coverage
 
-## Профили
-
-| Кнопка | Что делает | Риск/компромисс |
+| Capability | Windows | Linux |
 |---|---|---|
-| **Рекомендуемый профиль** | Включает Game Mode, отключает фоновую запись Game DVR, ускорение мыши, прозрачность и лишние анимации | Обратимые пользовательские настройки |
-| **Максимальная производительность** | Всё выше плюс глобальный power throttling off, поддерживаемые CPU EPP/Boost, отдельная Windows power-схема, PCIe/USB power saving off, Ethernet EEE/Interrupt Moderation off и уменьшение desktop/startup-задержек | Больше нагрев и расход энергии; Ethernet может сильнее грузить CPU |
-| **Ремонт старого BAT** | Удаляет известные CSRSS/CPU mitigation/private NVIDIA значения, возвращает уведомления Windows Security, включает Firewall и его службу | Нужна перезагрузка; BCD и системные файлы намеренно не чинятся автоматически |
-| **Очистить временные файлы** | Удаляет обычные temp-файлы старше 48 часов | Необратимо, но не трогает свежие файлы, reparse points, Prefetch, Event Logs, Windows Update и корзину |
+| System and hardware audit | WMI/CIM, power, profile drift | `/etc/os-release`, `/proc`, `/sys`, capability report |
+| Persistent optimization profile | Reversible registry, mouse, power and supported Ethernet settings | Explicit safe no-op; Windows settings are not emulated |
+| Game boost | Temporary profile, non-admin game process, automatic restore | Feral GameMode when present, direct launch otherwise |
+| Process tuning | Explicit normal/above-normal/high priority and affinity | Explicit nice/affinity; missing `CAP_SYS_NICE` is skipped |
+| Game discovery | Steam, Epic and fixed-drive Xbox | Steam, native and Flatpak roots |
+| Saved game profiles | Atomic user file with validation and lock | Atomic XDG file with validation and `flock` |
+| Startup manager | Reversible HKCU Run values; HKLM read-only | Reversible user XDG `.desktop` entries; system entries read-only |
+| Service inventory | Read-only Windows SCM | Read-only systemd; empty non-fatal report on other init systems |
+| Network and benchmark tools | Native interfaces, TCP latency, median/MAD comparison | Same portable implementation |
+| Self-update | GitHub Releases, exact architecture, SHA-256, deferred replacement | GitHub Releases, exact architecture, SHA-256, atomic replacement |
 
-Перед каждым изменяемым профилем движок выполняет:
+Supported release targets: Windows `amd64`, `arm64`, `386`; Linux `amd64`, `arm64`.
 
-`scan → plan → backup → apply → verify`
+## Get the release
 
-Если действие или проверка завершается ошибкой, уже применённые шаги откатываются в обратном порядке. Backup хранится с exact protected ACL только для `SYSTEM` и Administrators в `%ProgramData%\GofMan3 Optimizer\state`; SHA-256 каждой journal-версии доверенно фиксируется в HKLM, поэтому подложенный JSON restore не примет.
+Download the matching binary and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/GofMan5/Luxury-Optimization/releases/latest).
 
-## Поддержка CPU и GPU
-
-Поддержка не привязана к быстро устаревающему списку моделей:
-
-- CPU/GPU и драйверы читаются через Windows CIM;
-- x64-сборка работает на современных Intel и AMD;
-- ARM64-сборка предназначена для Snapdragon и других Windows on ARM устройств;
-- x86-сборка оставлена для старых 32-битных Windows;
-- multi-GPU конфигурации перечисляются по каждому устройству;
-- NVIDIA, AMD, Intel, Microsoft, Qualcomm и неизвестные GPU корректно определяются или остаются в категории «Другой»;
-- драйверные параметры применяются только когда физический Ethernet-драйвер сам объявил соответствующий registry keyword.
-
-Универсальных безопасных «секретных реестровых твиков» для каждой видеокарты не существует. Поэтому софт не меняет private NVIDIA/AMD/Intel keys, частоты, напряжение, HAGS, MSI/IRQ affinity или TSX без модели возможностей и измерения. Настройка драйвера, которой устройство не объявило, пропускается.
-
-## TUI
-
-- Все основные операции — кликабельные кнопки.
-- Колесо мыши прокручивает длинный аудит и точный план.
-- Перед применением показывается отдельный экран подтверждения.
-- Во время работы отображается прогресс; после — результат и переход к свежему аудиту.
-- `Esc` существует только как запасной вариант для терминалов без mouse events.
-
-Лучше всего интерфейс выглядит в Windows Terminal. Минимальный размер окна: `54×20`.
-
-## CLI для автоматизации
+Windows PowerShell:
 
 ```powershell
-GofMan3-Optimizer-amd64.exe audit --json
-GofMan3-Optimizer-amd64.exe audit --out report.json
-GofMan3-Optimizer-amd64.exe plan --profile recommended
-GofMan3-Optimizer-amd64.exe plan --profile maximum
-GofMan3-Optimizer-amd64.exe plan --profile repair-legacy
-GofMan3-Optimizer-amd64.exe apply --profile recommended
-GofMan3-Optimizer-amd64.exe repair-legacy
-GofMan3-Optimizer-amd64.exe restore
-GofMan3-Optimizer-amd64.exe clean --days 2
+curl.exe -fLO https://github.com/GofMan5/Luxury-Optimization/releases/latest/download/Luxury-Optimization-windows-amd64.exe
+curl.exe -fLO https://github.com/GofMan5/Luxury-Optimization/releases/latest/download/SHA256SUMS.txt
+$expected = ((Select-String -LiteralPath .\SHA256SUMS.txt -Pattern 'Luxury-Optimization-windows-amd64.exe$').Line -split '\s+')[0]
+$actual = (Get-FileHash .\Luxury-Optimization-windows-amd64.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw 'SHA-256 mismatch' }
+.\Luxury-Optimization-windows-amd64.exe audit
 ```
 
-`audit` и `plan` read-only. Изменяющие команды требуют явного подтверждения и при необходимости вызывают UAC. `clean` специально не работает из elevated-процесса и очищает только `%LocalAppData%\Temp` текущего пользователя. Core не использует `cmd /c`, не ищет EXE в текущей папке и не скачивает исполняемые файлы.
+Linux:
 
-## Если старый BAT уже запускался
+```sh
+curl -fLO https://github.com/GofMan5/Luxury-Optimization/releases/latest/download/Luxury-Optimization-linux-amd64
+curl -fLO https://github.com/GofMan5/Luxury-Optimization/releases/latest/download/SHA256SUMS.txt
+grep 'Luxury-Optimization-linux-amd64$' SHA256SUMS.txt | sha256sum -c -
+chmod +x Luxury-Optimization-linux-amd64
+./Luxury-Optimization-linux-amd64 audit
+```
 
-1. Сначала выполните аудит.
-2. Для найденных CSRSS/Firewall/mitigation/private NVIDIA значений используйте **Ремонт старого BAT**.
-3. Если отсутствует `RuntimeBroker.exe` или аномально велик `opengl32.dll`, запустите от администратора штатные `DISM /Online /Cleanup-Image /RestoreHealth`, затем `sfc /scannow`.
-4. BCD/HPET/timer-флаги проверяйте отдельно; программа только сообщает о них и не делает рискованный автоматический reset.
+Do not run a Linux game as root. On Windows, the game itself remains non-elevated; only the bounded system-profile operation crosses UAC.
 
-## Честная проверка эффекта
+## Core workflow
 
-Для сравнения используйте одну и ту же сцену, разрешение, лимит FPS, версию игры/драйвера и фоновые процессы. Запишите минимум три одинаковых прогона до и после. Сравнивайте медиану FPS, 1% low и график frametime. Один максимальный FPS ничего не доказывает.
+```text
+audit → plan → backup → apply → read-back verify → rollback on failure
+```
 
-## Сборка
+`audit` and `plan` are read-only. On Windows, every persistent target is journaled before mutation and checked after apply and restore. On Linux, persistent Windows-only targets return success as `skipped`; session tools continue with the capabilities that actually exist.
 
-Нужен Go 1.25+; `toolchain go1.25.12` автоматически выбирает проверенный patch-релиз.
+Windows examples:
 
 ```powershell
-.\build.ps1 -Version 2.2.1
+.\Luxury-Optimization-windows-amd64.exe plan --profile recommended
+.\Luxury-Optimization-windows-amd64.exe apply --profile recommended
+.\Luxury-Optimization-windows-amd64.exe boost --game "C:\Games\Game\Game.exe" --profile maximum --priority above-normal -- -windowed
+.\Luxury-Optimization-windows-amd64.exe games scan --json
+.\Luxury-Optimization-windows-amd64.exe startup list --json
+.\Luxury-Optimization-windows-amd64.exe services list --state running
+.\Luxury-Optimization-windows-amd64.exe backups list --json
+.\Luxury-Optimization-windows-amd64.exe restore --id 20260801T010203.123456789Z
 ```
 
-Скрипт запускает `go test`, `go vet`, собирает `amd64`, `arm64`, `386` с `CGO_ENABLED=0` и создаёт `dist\SHA256SUMS.txt`.
+Linux examples:
 
-Ручные проверки:
+```sh
+./Luxury-Optimization-linux-amd64 plan --profile maximum
+./Luxury-Optimization-linux-amd64 boost --game /opt/game/game --priority above-normal --affinity 0x0f
+./Luxury-Optimization-linux-amd64 games scan --json
+./Luxury-Optimization-linux-amd64 startup disable --name launcher.desktop
+./Luxury-Optimization-linux-amd64 services list --state running --json
+```
+
+Portable measurement tools:
+
+```sh
+./Luxury-Optimization-linux-amd64 network interfaces --json
+./Luxury-Optimization-linux-amd64 network test --address 1.1.1.1:443 --count 10
+./Luxury-Optimization-linux-amd64 benchmark template > before.json
+./Luxury-Optimization-linux-amd64 benchmark compare --before before.json --after after.json
+```
+
+Run at least three identical before/after passes. The comparison uses medians and median absolute deviation; it reports a gain only when the change exceeds observed run-to-run noise.
+
+## Updates
+
+The updater is transparent and opt-in:
+
+```sh
+./Luxury-Optimization-linux-amd64 update check
+./Luxury-Optimization-linux-amd64 update install
+./Luxury-Optimization-linux-amd64 update enable
+./Luxury-Optimization-linux-amd64 update status
+./Luxury-Optimization-linux-amd64 update disable
+```
+
+Once enabled, the program checks at most once per 24 hours. It accepts only the `1.0.x` release line, requires trusted HTTPS hosts, selects the exact OS/architecture asset and verifies it against `SHA256SUMS.txt`. A failed or unavailable check never blocks the requested command.
+
+## Profiles and boundaries
+
+The recommended Windows profile enables Game Mode, disables unused Game DVR capture, disables mouse acceleration through registry and live API state, and reduces purely visual UI work.
+
+The maximum profile adds a separate reversible AC power plan with a 5–100% CPU range, capability-checked EPP/boost settings, PCIe/USB power-saving changes and only Ethernet properties the physical adapter explicitly exposes. It can increase heat and power use.
+
+Linux intentionally keeps system-wide tuning in the distribution and kernel policy layer. `boost` uses GameMode when installed and otherwise launches normally; explicit nice/affinity requests degrade safely when the kernel or permissions do not allow them.
+
+See [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [roadmap](docs/ROADMAP.md), [changelog](docs/CHANGELOG.md) and [review evidence](docs/REVIEW-15.md).
+
+## Build from source
+
+Go 1.25.12 is the reference toolchain.
 
 ```powershell
-go test ./...
-go test -race ./...
-go vet ./...
-go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
-go run . audit --json
-go run . plan --profile maximum --json
+.\build.ps1 -Version 1.0.0
 ```
 
-Реальные `apply → reboot → restore` следует финально проверять в Windows Sandbox/VM на Windows 10/11. Сборка не подписывается автоматически: для публичного релиза нужен ваш code-signing сертификат.
+```sh
+chmod +x build.sh
+./build.sh 1.0.0
+```
 
-## Старые дополнительные файлы
+Both scripts verify modules, run tests and vet, cross-build all five targets, write `dist/SHA256SUMS.txt`, verify published hashes and preserve the previous generated set if publication fails.
 
-CRU, ParkControl, UnparkCPU, HIDUSBF, GTA DLL/config и ReShade не входят в core и не запускаются автоматически. Исходный BAT их тоже не использовал. Причины: неполные лицензии на распространение, устаревшие версии, unsigned/self-signed файлы и аппаратно-зависимый kernel driver. Подробности — в [MIGRATION.md](MIGRATION.md).
+## Open source
 
-Эти сторонние каталоги сохранены только в локальном архиве и намеренно исключены из публичного Git-репозитория. Публичная история содержит проверяемый Go core, документацию, build-скрипт и отключённый BAT-источник.
+Licensed under [MIT](LICENSE). Contributions are welcome under [CONTRIBUTING.md](CONTRIBUTING.md). Security reports use the private process in [SECURITY.md](SECURITY.md). Third-party attributions are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Optimization is workload-specific. Keep before/after evidence and a rollback path; more tweaks do not automatically mean more performance.
