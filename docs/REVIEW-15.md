@@ -42,6 +42,7 @@ Scope: complete Luxury Optimization 1.0.0 source tree, public files, build/relea
 | LO-012 | Build scripts accepted `+metadata` while the updater intentionally did not | Release builders now accept stable or `-prerelease` `1.0.x` versions only |
 | LO-013 | Update asset redirects and URLs did not constrain non-standard HTTPS ports | Every production request and redirect must stay on approved hosts and port 443 |
 | LO-014 | A remote release URL was printed without needing remote presentation data | Display URL is constructed from the pinned repository and validated tag |
+| LO-015 | Windows 8.3 temp roots and canonical EXE paths compared as different directories in CI | Canonicalize the Windows discovery root before walking and containment checks |
 
 ## Review-of-review evidence
 

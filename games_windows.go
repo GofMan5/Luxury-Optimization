@@ -280,6 +280,10 @@ func findGameExecutables(root, gameName string) []string {
 	if !filepath.IsAbs(root) {
 		return nil
 	}
+	root, err := filepath.EvalSymlinks(filepath.Clean(root))
+	if err != nil {
+		return nil
+	}
 	type candidate struct {
 		path  string
 		score int
