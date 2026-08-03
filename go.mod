@@ -7,7 +7,7 @@ toolchain go1.25.12
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
-	golang.org/x/sys v0.44.0
+	golang.org/x/sys v0.47.0
 )
 
 require (
