@@ -46,7 +46,7 @@ jobs:
           go-version-file: go.mod
           cache: true
       - run: chmod +x build.sh && ./build.sh 1.0.0-ci
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: Luxury-Optimization-cross-platform
           path: dist/

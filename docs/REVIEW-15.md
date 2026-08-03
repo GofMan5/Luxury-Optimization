@@ -43,6 +43,7 @@ Scope: complete Luxury Optimization 1.0.0 source tree, public files, build/relea
 | LO-013 | Update asset redirects and URLs did not constrain non-standard HTTPS ports | Every production request and redirect must stay on approved hosts and port 443 |
 | LO-014 | A remote release URL was printed without needing remote presentation data | Display URL is constructed from the pinned repository and validated tag |
 | LO-015 | Windows 8.3 temp roots and canonical EXE paths compared as different directories in CI | Canonicalize the Windows discovery root before walking and containment checks |
+| LO-016 | Official Actions using Node 20 emitted runner deprecation warnings | Moved checkout, setup-go and artifact upload to verified Node 24 major tags |
 
 ## Review-of-review evidence
 
