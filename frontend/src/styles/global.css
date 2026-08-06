@@ -332,6 +332,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .network-metrics { margin: 18px 0 24px; }
 
 .benchmark-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.benchmark-set .panel__header { align-items: center; }
+.benchmark-import .button { min-height: 40px; padding-inline: 13px; white-space: nowrap; }
 .benchmark-grid { display: grid; grid-template-columns: 42px repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center; margin-bottom: 8px; }
 .benchmark-grid strong { color: var(--muted); font-size: 11px; text-align: center; }
 .benchmark-grid input { width: 100%; min-width: 0; min-height: 40px; padding: 0 9px; color: var(--text); background: #080c12; border: 1px solid var(--border); border-radius: 9px; font-size: 12px; }
@@ -340,6 +342,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .benchmark-verdict { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .benchmark-verdict span { color: var(--muted); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
 .benchmark-verdict h2 { margin: 6px 0 0; font-size: 21px; }
+.benchmark-verdict > svg { color: var(--gold); }
+.benchmark-result .metric__value { font-size: 18px; }
 
 .restore-intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 28px; }
 .restore-intro > div { display: flex; align-items: flex-start; gap: 17px; }

@@ -1,5 +1,5 @@
 import type { BackendClient } from './client'
-import type { Audit, BackupSummary, CheckpointStatus, Handshake, NetworkInterface, Plan, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
+import type { Audit, BackupSummary, BenchmarkComparison, BenchmarkSet, CheckpointStatus, Handshake, NetworkInterface, Plan, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
 
 const hardware = {
   os: { caption: 'Windows 11 Pro', version: '24H2', build_number: '26100', architecture: '64-bit' },
@@ -11,7 +11,7 @@ const hardware = {
 
 const audit: Audit = {
   generated_at: new Date().toISOString(),
-  version: '1.0.2-preview',
+  version: '1.0.3-preview',
   hardware,
   administrator: false,
   active_power_guid: 'Balanced',
@@ -57,7 +57,7 @@ export class PreviewBackendClient implements BackendClient {
     let result: unknown
     switch (method) {
       case 'system.handshake':
-        result = { product: 'Luxury Optimization', version: '1.0.2-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
+        result = { product: 'Luxury Optimization', version: '1.0.3-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
         break
       case 'optimization.audit': result = audit; break
       case 'optimization.plan': result = previewPlan(body.profile === 'max' ? maxPlan : body.profile === 'medium' ? mediumPlan : litePlan, this.#tweakBackups); break
@@ -91,12 +91,13 @@ export class PreviewBackendClient implements BackendClient {
       case 'services.set': result = { changed: true, message: 'Service startup setting updated and verified.' }; break
       case 'network.interfaces': result = previewInterfaces; break
       case 'network.test': result = { address: body.address, attempts: body.count, succeeded: body.count, failed: 0, min_ms: 8.2, median_ms: 9.1, p95_ms: 10.4, max_ms: 10.4, jitter_ms: 0.7, samples_ms: [8.2, 9.1, 10.4] }; break
+      case 'benchmark.compare': result = previewBenchmark(body.before as BenchmarkSet, body.after as BenchmarkSet); break
       case 'backups.list': result = previewBackups; break
       case 'restore.system_points': result = previewSystemPoints; break
       case 'restore.open_system': result = { changed: false, message: 'Windows System Restore opened.' }; break
       case 'cleanup.run': result = { files: 18, dirs: 2, bytes: 14_680_064, skipped: 1 }; break
       case 'updates.status': result = updateStatus(); break
-      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.2', update_ready: false }; break
+      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.3', update_ready: false }; break
       case 'updates.install': result = { changed: false, message: 'Installed version is current.' }; break
       default: throw new Error(`Preview backend does not implement ${method}`)
     }
@@ -114,7 +115,18 @@ const previewInterfaces: NetworkInterface[] = [{ index: 4, name: 'Ethernet', mtu
 const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'lite', status: 'applied', restorable: true }]
 const previewSystemPoints: SystemRestorePoint[] = [{ sequence_number: 42, description: 'Before driver update', created_at: new Date(Date.now() - 86_400_000).toISOString(), restore_point_type: 0 }]
 function updateStatus(): UpdateStatus {
-  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.2-preview', update_ready: false }
+  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.3-preview', update_ready: false }
+}
+
+function previewBenchmark(before: BenchmarkSet, after: BenchmarkSet): BenchmarkComparison {
+  return {
+    before_label: before.label,
+    after_label: after.label,
+    average_fps: { before_median: 144, after_median: 151, delta_percent: 4.86, noise_percent: 2, meaningful: true },
+    one_percent_low_fps: { before_median: 100, after_median: 108, delta_percent: 8, noise_percent: 2, meaningful: true },
+    p95_frame_ms: { before_median: 8.5, after_median: 7.9, delta_percent: 7.06, noise_percent: 2, meaningful: true },
+    verdict: 'measurably_improved',
+  }
 }
 
 function previewCheckpoint(profile: string, ready = false): CheckpointStatus {

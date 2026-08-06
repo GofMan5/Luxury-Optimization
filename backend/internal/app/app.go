@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/GofMan5/Luxury-Optimization/internal/features/benchmark"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/cleanup"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/network"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/optimization"
@@ -36,6 +37,7 @@ var AllowedMethods = []string{
 	"services.set",
 	"network.interfaces",
 	"network.test",
+	"benchmark.compare",
 	"cleanup.run",
 	"updates.status",
 }
@@ -58,6 +60,8 @@ func (application *Application) Handle(ctx context.Context, method string, paylo
 		return services.Handle(ctx, application.optimizer, method, payload)
 	case "network.interfaces", "network.test":
 		return network.Handle(ctx, application.optimizer, method, payload)
+	case "benchmark.compare":
+		return benchmark.Handle(ctx, application.optimizer, method, payload)
 	case "cleanup.run":
 		return cleanup.Handle(ctx, application.optimizer, method, payload)
 	case "updates.status":

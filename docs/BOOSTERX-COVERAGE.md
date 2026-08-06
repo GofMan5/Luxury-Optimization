@@ -23,7 +23,7 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | APPX deep removal | Outside gaming performance scope | Excluded |
 | NVIDIA panel/profile import | Driver UI remains authoritative | Private/undocumented settings excluded |
 | UDP/bufferbloat and scheduler-latency tests | TCP median/p95/jitter baseline implemented | UDP/bufferbloat pending stable protocol |
-| Before/after comparison | Portable median FPS, 1% low, p95 frametime and noise verdict | Covered for imported runs |
+| Before/after comparison | Desktop manual entry plus CapFrameX/raw MangoHud import; median FPS, 1% low, p95 frametime and MAD noise verdict | Covered |
 | Device Control / MSI / IRQ | Hardware-specific and restart-sensitive | Benchmark first |
 | Fixes unrelated to optimization | Outside product scope | Excluded |
 | AI-generated/imported arbitrary tweaks | No trusted rollback contract | Excluded |

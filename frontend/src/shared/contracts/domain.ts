@@ -126,6 +126,34 @@ export interface LatencyReport {
   samples_ms: number[]
 }
 
+export interface BenchmarkRun {
+  average_fps: number
+  one_percent_low_fps: number
+  p95_frame_ms: number
+}
+
+export interface BenchmarkSet {
+  label: string
+  runs: BenchmarkRun[]
+}
+
+export interface MetricComparison {
+  before_median: number
+  after_median: number
+  delta_percent: number
+  noise_percent: number
+  meaningful: boolean
+}
+
+export interface BenchmarkComparison {
+  before_label: string
+  after_label: string
+  average_fps: MetricComparison
+  one_percent_low_fps: MetricComparison
+  p95_frame_ms: MetricComparison
+  verdict: 'measurably_improved' | 'measurably_regressed' | 'mixed_result' | 'within_run_to_run_variance'
+}
+
 export interface BackupSummary {
   id: string
   created_at: string

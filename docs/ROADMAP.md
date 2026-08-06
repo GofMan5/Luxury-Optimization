@@ -9,16 +9,16 @@ The target is broad gaming-optimization coverage with fewer permanent tweaks and
 - Session game boost on Windows and Linux with platform-native process controls.
 - Steam discovery on both platforms; Epic/Xbox discovery on Windows.
 - Atomic per-game profiles, startup management, service/network inventory and benchmark comparison.
+- Manual benchmark entry plus native CapFrameX JSON and raw MangoHud CSV import.
 - Opt-in verified updates from GitHub Releases.
 - Tauri v2 desktop UI with RU/EN, compact per-tweak actions and signed automatic update checks.
 
 ## Next vertical slices
 
-1. Import CapFrameX/MangoHud captures into the existing median/MAD comparison.
-2. Per-game launch history with explicit before/after result attachment.
-3. Background-load advisor that correlates processes, startup and services without bulk disabling.
-4. UDP/bufferbloat and storage diagnostics with stable, documented protocols.
-5. Linux desktop/TUI parity only where it reuses the existing capability contract.
+1. Per-game launch history with explicit before/after result attachment.
+2. Background-load advisor that correlates processes, startup and services without bulk disabling.
+3. UDP/bufferbloat and storage diagnostics with stable, documented protocols.
+4. Linux desktop/TUI parity only where it reuses the existing capability contract.
 
 ## Excluded
 

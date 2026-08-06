@@ -19,6 +19,7 @@ No debloat scripts, timer daemons, memory cleaners, private GPU keys or mass ser
 - Compact catalog of 100+ native, capability-checked tweaks with search, risk filters and useful sorting.
 - Manual apply and one-click rollback for every supported Windows tweak.
 - Lite, Medium and Max presets with strict nested scopes and a complete preflight plan.
+- Built-in before/after benchmark comparison with CapFrameX JSON and raw MangoHud CSV import.
 - Startup, system services and network diagnostics in one System section.
 - Windows System Restore plus sealed Luxury recovery files.
 - Russian and English UI.
@@ -83,11 +84,11 @@ cargo clippy --locked --all-targets --manifest-path src-tauri/Cargo.toml -- -D w
 Recovery-CLI target matrix:
 
 ```powershell
-.\build.ps1 -Version 1.0.2
+.\build.ps1 -Version 1.0.3
 ```
 
 ```sh
-./build.sh 1.0.2
+./build.sh 1.0.3
 ```
 
 ## Repository layout

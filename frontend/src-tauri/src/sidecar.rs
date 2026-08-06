@@ -213,6 +213,7 @@ fn allowed_method(method: &str) -> bool {
             | "services.set"
             | "network.interfaces"
             | "network.test"
+            | "benchmark.compare"
             | "cleanup.run"
             | "updates.status"
     )
@@ -366,6 +367,7 @@ mod tests {
             "optimization.apply_tweak",
             "optimization.restore_tweak",
             "services.list",
+            "benchmark.compare",
             "updates.status",
         ] {
             let frame = format!(

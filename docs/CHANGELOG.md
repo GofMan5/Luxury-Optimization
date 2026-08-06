@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.3 - 2026-08-07
+
+### Measured before/after workflow
+
+- Exposed the existing median/MAD benchmark comparison through the bounded desktop sidecar protocol.
+- Added a dedicated RU/EN Benchmarks screen with three-run manual entry and an explicit noise-aware verdict.
+- Added dependency-free import for native Luxury JSON, CapFrameX `MsBetweenPresents` JSON and raw MangoHud CSV logs.
+- Normalized raw captures into average FPS, percentile 1% low and p95 frametime without changing the source files.
+
 ## 1.0.2 - 2026-08-06
 
 ### 105 new native tweaks

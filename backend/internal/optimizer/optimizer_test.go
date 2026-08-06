@@ -739,4 +739,10 @@ func TestBenchmarkComparisonRejectsNoiseAndFindsGain(t *testing.T) {
 	if err := validateBenchmarkSet(BenchmarkSet{Runs: before.Runs[:2]}); err == nil {
 		t.Fatal("two-run benchmark accepted")
 	}
+	tooLarge := before
+	tooLarge.Runs = append([]BenchmarkRun(nil), before.Runs...)
+	tooLarge.Runs[0].AverageFPS = maxBenchmarkMetric + 1
+	if err := validateBenchmarkSet(tooLarge); err == nil {
+		t.Fatal("unbounded benchmark metric accepted")
+	}
 }

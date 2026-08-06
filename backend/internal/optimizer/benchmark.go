@@ -37,6 +37,8 @@ type BenchmarkComparison struct {
 	Verdict     string           `json:"verdict"`
 }
 
+const maxBenchmarkMetric = 100_000
+
 func benchmarkCommand(args []string) error {
 	if len(args) == 0 || args[0] == "template" {
 		if len(args) > 1 {
@@ -102,7 +104,7 @@ func validateBenchmarkSet(set BenchmarkSet) error {
 	}
 	for index, run := range set.Runs {
 		for _, value := range []float64{run.AverageFPS, run.Low1FPS, run.P95FrameMS} {
-			if value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+			if value <= 0 || value > maxBenchmarkMetric || math.IsNaN(value) || math.IsInf(value, 0) {
 				return fmt.Errorf("прогон %d содержит некорректную метрику", index+1)
 			}
 		}

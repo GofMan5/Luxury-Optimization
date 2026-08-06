@@ -5,6 +5,7 @@ import { LoadingState } from '../shared/ui/feedback'
 
 const OverviewScreen = lazy(() => import('../features/overview/overview-screen'))
 const ProfilesScreen = lazy(() => import('../features/profiles/profiles-screen'))
+const BenchmarkScreen = lazy(() => import('../features/benchmarks/benchmark-screen'))
 const SystemScreen = lazy(() => import('../features/system/system-screen'))
 const RestoreScreen = lazy(() => import('../features/restore/restore-screen'))
 const UpdatesScreen = lazy(() => import('../features/updates/updates-screen'))
@@ -16,6 +17,7 @@ export default function App() {
   switch (route) {
     case 'overview': screen = <OverviewScreen onNavigate={navigate} />; break
     case 'profiles': screen = <ProfilesScreen />; break
+    case 'benchmarks': screen = <BenchmarkScreen />; break
     case 'system': screen = <SystemScreen />; break
     case 'restore': screen = <RestoreScreen />; break
     case 'updates': screen = <UpdatesScreen />; break

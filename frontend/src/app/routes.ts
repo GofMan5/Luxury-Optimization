@@ -1,1 +1,1 @@
-export type RouteID = 'overview' | 'profiles' | 'system' | 'restore' | 'updates'
+export type RouteID = 'overview' | 'profiles' | 'benchmarks' | 'system' | 'restore' | 'updates'

@@ -19,7 +19,7 @@ go mod verify
 go mod tidy -diff
 ```
 
-Use `./build.sh 1.0.2` on Linux or `./build.ps1 -Version 1.0.2` on Windows to verify every recovery-CLI target. Build the desktop application from `frontend/` with `pnpm tauri:build`.
+Use `./build.sh 1.0.3` on Linux or `./build.ps1 -Version 1.0.3` on Windows to verify every recovery-CLI target. Build the desktop application from `frontend/` with `pnpm tauri:build`.
 
 ## Pull requests
 
