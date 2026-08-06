@@ -21,15 +21,6 @@ func canonicalProfileID(id string) string {
 	}
 }
 
-func isSupportedProfileID(id string) bool {
-	switch canonicalProfileID(id) {
-	case profileLite, profileMedium, profileMaximum:
-		return true
-	default:
-		return false
-	}
-}
-
 type Hardware struct {
 	OS         OSInfo    `json:"os"`
 	CPUs       []CPUInfo `json:"cpus"`

@@ -180,9 +180,6 @@ func applyCommand(args []string) error {
 	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
 		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
 	}
-	if !isSupportedProfileID(*profileID) {
-		return errors.New("apply поддерживает lite, medium и max")
-	}
 	if _, err := profileByID(*profileID); err != nil {
 		return err
 	}
