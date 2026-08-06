@@ -11,7 +11,7 @@ const hardware = {
 
 const audit: Audit = {
   generated_at: new Date().toISOString(),
-  version: '1.0.1-preview',
+  version: '1.0.2-preview',
   hardware,
   administrator: false,
   active_power_guid: 'Balanced',
@@ -21,31 +21,31 @@ const audit: Audit = {
     { id: 'startup', available: true, mode: 'reversible', detail: 'Current-user startup entries' },
     { id: 'services', available: true, mode: 'read-only', detail: 'System service inventory' },
   ],
-  optimization_findings: [{ id: 'recommended-profile-drift', title: 'Recommended profile differs', evidence: '2 of 10 settings differ', action: 'Review exact plan' }],
+  optimization_findings: [{ id: 'lite-profile-drift', title: 'Lite profile differs', evidence: '2 of 6 settings differ', action: 'Review exact Lite plan' }],
 }
 
-const recommendedPlan: Plan = {
-  profile: { id: 'recommended', name: 'Recommended gaming profile', description: 'Reversible gaming and interface settings.', performance_plan: false, network_latency: false },
-  hardware,
-  items: [
-    previewTweak('game-mode-enable', 'Gaming', 'Windows Game Mode', 'Enabled', 'Enabled', false),
-    previewTweak('capture-game-dvr', 'Gaming', 'Background game capture', 'Enabled', 'Disabled', true),
-    previewTweak('mouse-speed', 'Input', 'Mouse acceleration', 'On', 'Off', true),
-    previewTweak('ui-transparency', 'Desktop', 'Interface transparency', 'Off', 'Off', false),
-    previewTweak('game-mode-allow', 'Gaming', 'Automatic Game Mode', 'Enabled', 'Enabled', false),
-    previewTweak('mouse-threshold-1', 'Input', 'Mouse threshold 1', '0', '0', false),
-    previewTweak('mouse-threshold-2', 'Input', 'Mouse threshold 2', '0', '0', false),
-    previewTweak('ui-taskbar-animation', 'Desktop', 'Taskbar animations', 'Off', 'Off', false),
-    previewTweak('ui-window-animation', 'Desktop', 'Window animation', 'Off', 'Off', false),
-    previewTweak('capture-app', 'Gaming', 'App capture', 'Disabled', 'Disabled', false),
-  ],
-}
+const liteItems = [
+  previewTweak('game-mode-enable', 'Gaming', 'Windows Game Mode', 'Enabled', 'Enabled', false, 'low'),
+  previewTweak('game-mode-allow', 'Gaming', 'Automatic Game Mode', 'Enabled', 'Enabled', false, 'low'),
+  previewTweak('ui-transparency', 'Desktop', 'Interface transparency', 'On', 'Off', true, 'low'),
+  previewTweak('ui-taskbar-animation', 'Desktop', 'Taskbar animations', 'On', 'Off', true, 'low'),
+  previewTweak('ui-window-animation', 'Desktop', 'Window animation', 'Off', 'Off', false, 'low'),
+  previewTweak('menu-show-delay', 'Desktop', 'Menu opening delay', '400', '0', true, 'low'),
+]
+const mediumRegistryItems = [...liteItems,
+  previewTweak('capture-game-dvr', 'Gaming', 'Background game capture', 'Enabled', 'Disabled', true),
+  previewTweak('capture-app', 'Gaming', 'App capture', 'Enabled', 'Disabled', true),
+  previewTweak('mouse-speed', 'Input', 'Mouse acceleration', 'On', 'Off', true, 'low'),
+  previewTweak('mouse-threshold-1', 'Input', 'Mouse threshold 1', '6', '0', true, 'low'),
+  previewTweak('mouse-threshold-2', 'Input', 'Mouse threshold 2', '10', '0', true, 'low'),
+]
+const mediumPowerItems = Array.from({ length: 11 }, (_, index) => previewTweak(`power-medium-${index + 1}`, 'Processor', `Reviewed CPU policy ${index + 1}`, 'Balanced', 'High Performance', index < 3, 'medium'))
+const additionalMaxPowerItems = Array.from({ length: 96 }, (_, index) => previewTweak(`power-max-${index + 1}`, index < 10 ? 'Storage' : 'Processor', `Native Max policy ${index + 1}`, 'Balanced', 'High Performance', false, 'high'))
+const ethernetItems = Array.from({ length: 4 }, (_, index) => previewTweak(`ethernet-preview-${index + 1}`, 'Ethernet', `Adapter policy ${index + 1}`, '1', '0', index === 0, 'medium'))
 
-const maximumPlan: Plan = {
-  ...recommendedPlan,
-  profile: { id: 'maximum', name: 'Maximum performance', description: 'Recommended profile plus capability-checked power and Ethernet settings.', performance_plan: true, network_latency: true },
-  items: [...recommendedPlan.items, previewTweak('power-plan', 'Power', 'Performance power plan', 'Balanced', 'Luxury Performance', true, 'high')],
-}
+const litePlan: Plan = { profile: { id: 'lite', name: 'Lite', description: 'Six low-risk gaming and interface improvements.', performance_plan: false, network_latency: false }, hardware, items: liteItems }
+const mediumPlan: Plan = { profile: { id: 'medium', name: 'Medium', description: 'Lite plus capture/input tuning and 11 reviewed CPU policies.', performance_plan: true, network_latency: false }, hardware, items: [...mediumRegistryItems, previewTweak('power-plan', 'Power', 'Medium power plan', 'Balanced', 'Luxury Medium', true, 'medium'), ...mediumPowerItems] }
+const maxPlan: Plan = { profile: { id: 'max', name: 'Max', description: 'All supported reviewed native actions.', performance_plan: true, network_latency: true }, hardware, items: [...mediumRegistryItems, previewTweak('startup-delay', 'Desktop', 'Startup delay', '1000', '0', true), previewTweak('power-plan', 'Power', 'Max power plan', 'Balanced', 'Luxury Max', true, 'high'), ...mediumPowerItems, ...additionalMaxPowerItems, ...ethernetItems] }
 
 export class PreviewBackendClient implements BackendClient {
   #checkpoints = new Set<string>()
@@ -57,10 +57,10 @@ export class PreviewBackendClient implements BackendClient {
     let result: unknown
     switch (method) {
       case 'system.handshake':
-        result = { product: 'Luxury Optimization', version: '1.0.1-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
+        result = { product: 'Luxury Optimization', version: '1.0.2-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
         break
       case 'optimization.audit': result = audit; break
-      case 'optimization.plan': result = previewPlan(body.profile === 'maximum' ? maximumPlan : recommendedPlan, this.#tweakBackups); break
+      case 'optimization.plan': result = previewPlan(body.profile === 'max' ? maxPlan : body.profile === 'medium' ? mediumPlan : litePlan, this.#tweakBackups); break
       case 'optimization.apply': result = { changed: true, message: 'Profile applied and verified.' }; break
       case 'optimization.apply_tweak': {
         const id = String(body.id ?? '')
@@ -75,12 +75,12 @@ export class PreviewBackendClient implements BackendClient {
       }
       case 'optimization.restore': result = { changed: true, message: 'Original state restored and verified.' }; break
       case 'optimization.checkpoint_status': {
-        const profile = String(body.profile ?? 'recommended')
+        const profile = String(body.profile ?? 'lite')
         result = previewCheckpoint(profile, this.#checkpoints.has(profile))
         break
       }
       case 'optimization.create_checkpoint': {
-        const profile = String(body.profile ?? 'recommended')
+        const profile = String(body.profile ?? 'lite')
         this.#checkpoints.add(profile)
         result = previewCheckpoint(profile, true)
         break
@@ -96,7 +96,7 @@ export class PreviewBackendClient implements BackendClient {
       case 'restore.open_system': result = { changed: false, message: 'Windows System Restore opened.' }; break
       case 'cleanup.run': result = { files: 18, dirs: 2, bytes: 14_680_064, skipped: 1 }; break
       case 'updates.status': result = updateStatus(); break
-      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.1', update_ready: false }; break
+      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.2', update_ready: false }; break
       case 'updates.install': result = { changed: false, message: 'Installed version is current.' }; break
       default: throw new Error(`Preview backend does not implement ${method}`)
     }
@@ -111,10 +111,10 @@ export class PreviewBackendClient implements BackendClient {
 const previewStartup: StartupReport = { entries: [{ scope: 'HKCU', name: 'Steam', command: 'steam.exe -silent', state: 'present' }, { scope: 'HKCU', name: 'Discord', command: 'Update.exe --processStart Discord.exe', state: 'disabled_by_luxury_optimization' }] }
 const previewServices: ServicesReport = { services: [{ name: 'BFE', display_name: 'Base Filtering Engine', description: 'Manages firewall and Internet Protocol security policies.', dependencies: [], state: 'running', start_type: 'automatic', process_id: 1024, system: true, critical: true, manageable: false }, { name: 'mpssvc', display_name: 'Windows Defender Firewall', description: 'Helps protect the computer by preventing unauthorized network access.', dependencies: ['BFE'], state: 'running', start_type: 'automatic', process_id: 1024, system: true, critical: true, manageable: false }, { name: 'VendorAgent', display_name: 'Vendor Update Agent', description: 'Checks for optional vendor software updates.', dependencies: [], state: 'stopped', start_type: 'manual', system: false, critical: false, manageable: true }], skipped: 0 }
 const previewInterfaces: NetworkInterface[] = [{ index: 4, name: 'Ethernet', mtu: 1500, flags: 'up|broadcast|multicast', addresses: ['192.168.1.20/24'] }]
-const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'recommended', status: 'applied', restorable: true }]
+const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'lite', status: 'applied', restorable: true }]
 const previewSystemPoints: SystemRestorePoint[] = [{ sequence_number: 42, description: 'Before driver update', created_at: new Date(Date.now() - 86_400_000).toISOString(), restore_point_type: 0 }]
 function updateStatus(): UpdateStatus {
-  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.1-preview', update_ready: false }
+  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.2-preview', update_ready: false }
 }
 
 function previewCheckpoint(profile: string, ready = false): CheckpointStatus {

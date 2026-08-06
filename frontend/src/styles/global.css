@@ -277,7 +277,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .tweak-recovery { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .tweak-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .tweak-actions .button { min-height: 34px; padding-inline: 13px; font-size: 10px; }
-.preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.preset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
 .preset-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 15px; min-height: 168px; padding: 22px; color: #a6b0bc; background: rgba(9, 13, 19, 0.9); border: 1px solid var(--border); border-radius: 16px; text-align: left; cursor: pointer; }
 .preset-card--selected { color: var(--text); background: rgba(215, 182, 101, 0.075); border-color: rgba(215, 182, 101, 0.42); }
 .preset-card__icon { display: grid; width: 43px; height: 43px; place-items: center; color: var(--gold); background: rgba(215, 182, 101, 0.08); border: 1px solid rgba(215, 182, 101, 0.2); border-radius: 12px; }

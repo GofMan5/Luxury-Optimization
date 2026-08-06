@@ -99,7 +99,7 @@ func auditCommand(args []string) error {
 
 func planCommand(args []string) error {
 	set := flag.NewFlagSet("plan", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "recommended или maximum")
+	profileID := set.String("profile", profileLite, "lite, medium или max")
 	jsonOnly := set.Bool("json", false, "вывести JSON")
 	if err := set.Parse(args); err != nil {
 		return err
@@ -111,6 +111,8 @@ func planCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	describePlan(&plan)
+	decorateTweakRestoreState(&plan)
 	if *jsonOnly {
 		data, err := json.MarshalIndent(plan, "", "  ")
 		if err != nil {
@@ -125,7 +127,7 @@ func planCommand(args []string) error {
 
 func applyCommand(args []string) error {
 	set := flag.NewFlagSet("apply", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "recommended или maximum")
+	profileID := set.String("profile", profileLite, "lite, medium или max")
 	_ = set.Bool("yes", false, "совместимость с Windows CLI")
 	_ = set.Bool("quiet", false, "совместимость с Windows CLI")
 	if err := set.Parse(args); err != nil {
@@ -250,9 +252,9 @@ func printHelp() {
 Графический интерфейс поставляется как Tauri-приложение. Этот бинарник — recovery CLI.
 
   audit [--json] [--out report.json]   read-only аудит системы и возможностей
-  plan --profile recommended|maximum  точный план; недоступное помечается как skipped
+  plan --profile lite|medium|max  точный план; недоступное помечается как skipped
   apply --profile ...                  безопасный Linux no-op для совместимости
-  boost --game /path/game [--profile maximum] [--priority above-normal] [--affinity 0xFF] -- [args]
+  boost --game /path/game [--profile max] [--priority above-normal] [--affinity 0xFF] -- [args]
                                         GameMode, nice и affinity только на время игры
   games scan|add|list|run|remove       Steam и сохранённые игровые профили
   startup list|disable|enable          пользовательская XDG autostart

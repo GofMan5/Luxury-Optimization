@@ -10,15 +10,15 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | Preview before apply | Current → desired value for every target | Covered |
 | Backup and restore | ACL-protected, SHA-256-sealed journal and retryable rollback | Stronger |
 | Restore center | Admin-only verified inventory plus exact `restore --id` | Covered in CLI |
-| Basic and advanced system tweaks | Recommended/maximum profiles with capability checks | Curated |
-| Power settings | Separate temporary AC plan, 5–100% CPU, optional EPP/boost read-back | Covered |
+| Basic and advanced system tweaks | 100+ native processor, storage, PCIe, USB, gaming and UI actions with capability checks | Curated |
+| Power settings | Separate temporary AC plan, native High Performance defaults, 5–100% CPU and exact read-back | Covered |
 | GameModeX / game profiles | `boost`, `games add/list/run/remove` | Covered without daemon |
 | ProcessX priority and affinity | Live process API, explicit per-game values, read-back | Covered without IFEO |
 | Steam/Epic/Xbox discovery | `games scan`; Linux supports Steam native/Flatpak | Covered by platform |
 | Startup manager | HKCU list/disable/enable with exact backup | Covered; HKLM remains read-only |
 | GameReadyX | `audit` plus profile drift and capability plan | Partial; checks stay transparent |
 | Tweak explanation | README, exact plan, NOTES and this matrix | Covered |
-| Questionnaire | Automatic audit plus deterministic recommended/maximum plans | Replaced; no ambiguous bulk answers |
+| Questionnaire | Automatic audit plus deterministic Lite/Medium/Max plans | Replaced; no ambiguous bulk answers |
 | Service groups/manager | Read-only Windows SCM and Linux systemd inventory | Inspection covered; mutation rejected |
 | APPX deep removal | Outside gaming performance scope | Excluded |
 | NVIDIA panel/profile import | Driver UI remains authoritative | Private/undocumented settings excluded |
@@ -40,9 +40,9 @@ Official feature sources:
 | Game Mode and Game DVR capture | Accepted | Fixed allowlist, backup and live verification |
 | Mouse acceleration | Accepted | Registry snapshot plus live `SystemParametersInfoW` apply/read-back |
 | UI animation/transparency and startup/menu delay | Accepted | User-scoped and exactly restorable |
-| CPU min/max, EPP and boost | Accepted | Separate AC plan; apply only exposed settings |
-| PCIe/USB AC power saving | Accepted in maximum | Temporary plan and heat/power warning |
-| Ethernet EEE/Interrupt Moderation | Accepted in maximum | Physical Ethernet and advertised keywords only |
+| Native CPU and storage High Performance policies | Accepted | Enumerate documented power APIs; separate AC plan; apply only exposed settings |
+| PCIe/USB AC power saving | Accepted in Max | Temporary plan and heat/power warning |
+| Ethernet EEE/Interrupt Moderation | Accepted in Max | Physical Ethernet and advertised keywords only |
 | HKCU Run startup entries | Accepted by explicit name | Backup before delete, type/value read-back, exact enable |
 | Process priority | Conditional | Live child process only; normal/above-normal/high, never realtime |
 | CPU affinity | Conditional | Explicit mask only, processor-group and CPU-count validation |
@@ -67,3 +67,5 @@ Useful Microsoft references:
 - <https://learn.microsoft.com/windows/win32/api/processthreadsapi/nf-processthreadsapi-setpriorityclass>
 - <https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-setprocessaffinitymask>
 - <https://learn.microsoft.com/windows/win32/setupapi/run-and-runonce-registry-keys>
+- <https://learn.microsoft.com/windows/win32/api/powrprof/nf-powrprof-powerenumerate>
+- <https://learn.microsoft.com/windows/win32/api/powrprof/nf-powrprof-powerreadacdefaultindex>

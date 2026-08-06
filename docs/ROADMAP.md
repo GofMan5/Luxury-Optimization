@@ -5,7 +5,7 @@ The target is broad gaming-optimization coverage with fewer permanent tweaks and
 ## Current
 
 - Capability-aware Windows and Linux audit and plans.
-- Reversible Windows recommended/maximum profiles and sealed restore center.
+- Reversible Windows Lite/Medium/Max profiles and sealed restore center.
 - Session game boost on Windows and Linux with platform-native process controls.
 - Steam discovery on both platforms; Epic/Xbox discovery on Windows.
 - Atomic per-game profiles, startup management, service/network inventory and benchmark comparison.

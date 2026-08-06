@@ -80,7 +80,7 @@ func addSavedGame(args []string) error {
 	set := flag.NewFlagSet("games add", flag.ContinueOnError)
 	path := set.String("path", "", "абсолютный путь к EXE")
 	name := set.String("name", "", "отображаемое имя")
-	profile := set.String("profile", profileMaximum, "recommended или maximum")
+	profile := set.String("profile", profileMaximum, "lite, medium или max")
 	priority := set.String("priority", "normal", "normal, above-normal или high")
 	affinityText := set.String("affinity", "", "необязательная CPU mask")
 	if err := set.Parse(args); err != nil {

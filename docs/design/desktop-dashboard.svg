@@ -40,7 +40,7 @@
         <text x="38" y="54" fill="#d7b665" font-size="14" letter-spacing="2">CURRENT STATE</text>
         <text x="38" y="108" fill="#f5f1e7" font-size="38" font-weight="720">Ready for a measured pass</text>
         <text x="38" y="143" fill="#98a3b0" font-size="16">2 recommendations differ from the safe gaming profile.</text>
-        <g transform="translate(38 181)"><rect width="216" height="52" rx="13" fill="url(#gold)"/><text x="108" y="33" text-anchor="middle" fill="#17130b" font-size="15" font-weight="750">Review recommended</text></g>
+        <g transform="translate(38 181)"><rect width="216" height="52" rx="13" fill="url(#gold)"/><text x="108" y="33" text-anchor="middle" fill="#17130b" font-size="15" font-weight="750">Review Lite</text></g>
         <g transform="translate(270 181)"><rect width="142" height="52" rx="13" fill="none" stroke="#d7b665" stroke-opacity=".55"/><text x="71" y="33" text-anchor="middle" fill="#ead69c" font-size="15" font-weight="650">Run audit</text></g>
         <g transform="translate(610 45)"><circle cx="104" cy="104" r="84" fill="#080a0e" stroke="#d7b665" stroke-opacity=".2"/><circle cx="104" cy="104" r="69" fill="none" stroke="#d7b665" stroke-width="8" stroke-dasharray="358 76" stroke-linecap="round" transform="rotate(-90 104 104)"/><text x="104" y="101" text-anchor="middle" fill="#f4e2a8" font-size="38" font-weight="720">8/10</text><text x="104" y="129" text-anchor="middle" fill="#7f8996" font-size="12" letter-spacing="1">TARGETS MATCH</text></g>
       </g>

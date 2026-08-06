@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.0.2 - 2026-08-06
+
+### 105 new native tweaks
+
+- Added 93 additional processor policies, 10 storage policies and direct PCIe/USB actions; a supported Windows 11 system now exposes 124 reversible catalog actions.
+- Values come from the installed Windows High Performance personality instead of copied tweak-pack constants, so newer processor classes inherit the defaults shipped for that OS.
+- Kept deliberate stability overrides: all exposed processor classes may idle at 5%, active storage is not powered down on AC, and maximum state remains 100%.
+- Unsupported settings are omitted before mutation; every visible setting is read from the active scheme and receives its own manual apply/rollback action.
+
+### Reviewed profiles
+
+- Replaced the ambiguous two-preset model with strict nested `Lite`, `Medium` and `Max` profiles.
+- Lite contains 6 low-risk gaming/interface actions and never changes power or network state.
+- Medium contains 11 registry/input actions plus 11 reviewed CPU policies in a cloned AC plan (23 actions on the verification machine), with no storage or Ethernet mutation.
+- Max exposes the complete supported catalog (124 actions on the verification machine); internal scheduler, storage, PCIe/USB and Ethernet policies remain Max-only.
+- Kept `recommended` and `maximum` as legacy aliases so early `1.0.x` backups and saved game profiles still validate and restore.
+- Added the complete [1.0.2 tweak review](TWEAK-REVIEW-1.0.2.md).
+
+### Reliability and release
+
+- Bounded native power enumeration, localized names, duplicate-ID rejection and capability read-back before a cloned plan is created.
+- Extended sealed-backup validation to the processor and storage power subgroups while keeping old `1.0.x` backups restorable across Windows catalog changes.
+- Bumped desktop, sidecar, CI and release metadata to `1.0.2`.
+
 ## 1.0.1 - 2026-08-04
 
 ### Tweaks

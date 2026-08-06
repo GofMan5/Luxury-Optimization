@@ -17,7 +17,7 @@ import (
 func boostCommand(args []string) error {
 	set := flag.NewFlagSet("boost", flag.ContinueOnError)
 	game := set.String("game", "", "абсолютный путь к EXE игры")
-	profile := set.String("profile", profileMaximum, "recommended или maximum")
+	profile := set.String("profile", profileMaximum, "lite, medium или max")
 	priority := set.String("priority", "normal", "normal, above-normal или high")
 	affinityText := set.String("affinity", "", "необязательная CPU mask, например 0xFF")
 	if err := set.Parse(args); err != nil {

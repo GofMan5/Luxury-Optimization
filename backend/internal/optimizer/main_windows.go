@@ -137,7 +137,7 @@ func auditCommand(args []string) error {
 
 func planCommand(args []string) error {
 	set := flag.NewFlagSet("plan", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "recommended или maximum")
+	profileID := set.String("profile", profileLite, "lite, medium или max")
 	jsonOnly := set.Bool("json", false, "вывести JSON")
 	if err := set.Parse(args); err != nil {
 		return err
@@ -149,6 +149,8 @@ func planCommand(args []string) error {
 	if err != nil {
 		return err
 	}
+	describePlan(&plan)
+	decorateTweakRestoreState(&plan)
 	if *jsonOnly {
 		data, err := json.MarshalIndent(plan, "", "  ")
 		if err != nil {
@@ -163,7 +165,7 @@ func planCommand(args []string) error {
 
 func applyCommand(args []string) error {
 	set := flag.NewFlagSet("apply", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "recommended или maximum")
+	profileID := set.String("profile", profileLite, "lite, medium или max")
 	yes := set.Bool("yes", false, "подтвердить")
 	quiet := set.Bool("quiet", false, "не печатать результат")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
@@ -178,8 +180,8 @@ func applyCommand(args []string) error {
 	if *boostSession && (*parentPID == 0 || !isAdministrator()) {
 		return errors.New("boost-session разрешён только elevated-процессу с parent-pid")
 	}
-	if *profileID != profileRecommended && *profileID != profileMaximum {
-		return errors.New("apply поддерживает только recommended и maximum")
+	if !isSupportedProfileID(*profileID) {
+		return errors.New("apply поддерживает lite, medium и max")
 	}
 	if _, err := profileByID(*profileID); err != nil {
 		return err
@@ -235,7 +237,7 @@ func applyCommand(args []string) error {
 
 func checkpointCommand(args []string) error {
 	set := flag.NewFlagSet("checkpoint", flag.ContinueOnError)
-	profileID := set.String("profile", profileRecommended, "internal: recommended или maximum")
+	profileID := set.String("profile", profileLite, "internal: lite, medium или max")
 	backupID := set.String("id", "", "internal: ID точки восстановления")
 	parentPID := set.Uint("parent-pid", 0, "internal: PID исходного процесса")
 	quiet := set.Bool("quiet", false, "internal: не печатать результат")
@@ -370,7 +372,7 @@ func printAudit(audit Audit) {
 	}
 	fmt.Println("Активная схема:", audit.ActivePowerGUID)
 	if len(audit.Findings) == 0 {
-		fmt.Println("Рекомендуемый игровой профиль уже применён полностью.")
+		fmt.Println("Безопасный профиль Lite уже применён полностью.")
 	}
 	for _, finding := range audit.Findings {
 		fmt.Printf("%s — %s\n", displayText(finding.Title), displayText(finding.Evidence))
@@ -400,10 +402,10 @@ func printHelp() {
 Графический интерфейс поставляется как Tauri-приложение. Этот бинарник — recovery CLI.
 
   audit [--json] [--out report.json]   read-only аудит
-  plan --profile recommended|maximum
+  plan --profile lite|medium|max
                                         точный план без изменений
-  apply --profile recommended|maximum  применить с backup и проверкой
-  boost --game C:\Games\Game.exe --profile maximum [--priority above-normal] [--affinity 0xFF] -- [аргументы игры]
+  apply --profile lite|medium|max  применить с backup и проверкой
+  boost --game C:\Games\Game.exe --profile max [--priority above-normal] [--affinity 0xFF] -- [аргументы игры]
                                         применить профиль только на время игры
   startup list [--json]                показать registry-автозагрузку
   startup disable|enable --name NAME   обратимо управлять HKCU Run

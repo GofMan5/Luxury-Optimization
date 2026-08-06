@@ -72,7 +72,7 @@ func TestLinuxStartupDisableEnableRoundTrip(t *testing.T) {
 }
 
 func TestLinuxUnavailableCapabilitiesRemainNonFatal(t *testing.T) {
-	if _, err := buildPlan(profileRecommended); err != nil {
+	if _, err := buildPlan(profileLite); err != nil {
 		t.Fatal(err)
 	}
 	audit := collectAudit()

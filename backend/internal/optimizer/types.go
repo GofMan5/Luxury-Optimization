@@ -3,9 +3,32 @@ package optimizer
 import "time"
 
 const (
-	profileRecommended = "recommended"
-	profileMaximum     = "maximum"
+	profileLite              = "lite"
+	profileMedium            = "medium"
+	profileMaximum           = "max"
+	profileLegacyRecommended = "recommended"
+	profileLegacyMaximum     = "maximum"
 )
+
+func canonicalProfileID(id string) string {
+	switch id {
+	case profileLegacyRecommended:
+		return profileLite
+	case profileLegacyMaximum:
+		return profileMaximum
+	default:
+		return id
+	}
+}
+
+func isSupportedProfileID(id string) bool {
+	switch canonicalProfileID(id) {
+	case profileLite, profileMedium, profileMaximum:
+		return true
+	default:
+		return false
+	}
+}
 
 type Hardware struct {
 	OS         OSInfo    `json:"os"`

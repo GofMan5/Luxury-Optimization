@@ -16,9 +16,9 @@ No debloat scripts, timer daemons, memory cleaners, private GPU keys or mass ser
 
 ## What is included
 
-- Compact tweak catalog with search, risk filters and useful sorting.
+- Compact catalog of 100+ native, capability-checked tweaks with search, risk filters and useful sorting.
 - Manual apply and one-click rollback for every supported Windows tweak.
-- Recommended and Maximum presets with a complete preflight plan.
+- Lite, Medium and Max presets with strict nested scopes and a complete preflight plan.
 - Startup, system services and network diagnostics in one System section.
 - Windows System Restore plus sealed Luxury recovery files.
 - Russian and English UI.
@@ -35,7 +35,7 @@ capture exact state → seal backup → journal intent → apply → read back
 
 Manual tweaks receive separate backups. Ethernet actions are bound to one physical adapter, mouse rollback touches only the selected live setting, and power tweaks work in a cloned plan instead of editing the user's original plan.
 
-The Maximum preset requires a recent local Luxury checkpoint. Unsupported settings stay visible as unavailable or skipped; they are never approximated.
+Every preset requires a recent matching local Luxury checkpoint. Unsupported settings stay unavailable or skipped; they are never approximated.
 
 ## Platform support
 
@@ -83,11 +83,11 @@ cargo clippy --locked --all-targets --manifest-path src-tauri/Cargo.toml -- -D w
 Recovery-CLI target matrix:
 
 ```powershell
-.\build.ps1 -Version 1.0.1
+.\build.ps1 -Version 1.0.2
 ```
 
 ```sh
-./build.sh 1.0.1
+./build.sh 1.0.2
 ```
 
 ## Repository layout
@@ -102,7 +102,7 @@ backend/                  Go sidecar and recovery CLI
 docs/                     decisions, architecture, changelog and review evidence
 ```
 
-See [architecture](docs/ARCHITECTURE.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
+See [architecture](docs/ARCHITECTURE.md), [1.0.2 tweak review](docs/TWEAK-REVIEW-1.0.2.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
 
 ## Contributing
 

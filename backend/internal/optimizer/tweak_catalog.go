@@ -6,6 +6,24 @@ type tweakMetadata struct {
 	effect, benefit, risk, level string
 }
 
+var mediumPowerSettingIDs = map[string]bool{
+	"bc5038f7-23e0-4960-96da-33abaf5935ec": true,
+	"bc5038f7-23e0-4960-96da-33abaf5935ed": true,
+	"bc5038f7-23e0-4960-96da-33abaf5935ee": true,
+	"893dee8e-2bef-41e0-89c6-b55d0929964c": true,
+	"893dee8e-2bef-41e0-89c6-b55d0929964d": true,
+	"893dee8e-2bef-41e0-89c6-b55d0929964e": true,
+	"36687f9e-e3a5-4dbf-b1dc-15eb381c6863": true,
+	"36687f9e-e3a5-4dbf-b1dc-15eb381c6864": true,
+	"36687f9e-e3a5-4dbf-b1dc-15eb381c6865": true,
+	"be337238-0d82-4146-a960-4f3749d470c7": true,
+	"94d3a615-a899-4ac5-ae2b-e4d8f634367f": true,
+}
+
+func isMediumPowerSetting(id string) bool {
+	return mediumPowerSettingIDs[strings.TrimPrefix(strings.ToLower(id), "power-")]
+}
+
 var tweakCatalog = map[string]tweakMetadata{
 	"game-mode-allow":      {"Allows Windows to engage Game Mode automatically for detected games.", "May reduce background scheduling interference while a game is active.", "Low: Windows remains in control and may show no measurable change on some systems.", "low"},
 	"game-mode-enable":     {"Enables the current-user Windows Game Mode preference.", "Can prioritize the active game workload over background activity.", "Low: may change background-app responsiveness; FPS gain is workload-dependent.", "low"},
@@ -29,8 +47,16 @@ func describePlan(plan *Plan) {
 	for index := range plan.Items {
 		item := &plan.Items[index]
 		metadata, ok := tweakCatalog[item.ID]
+		if item.ID == "power-plan" && canonicalProfileID(plan.Profile.ID) == profileMedium {
+			metadata, ok = tweakMetadata{"Creates a separate reversible Medium AC plan without editing the current plan.", "Applies only the reviewed CPU limits, EPP, boost and active-cooling policies.", "Medium: may increase heat and power use under load; the workload may show no gain.", "medium"}, true
+		}
 		if !ok && strings.HasPrefix(item.ID, "power-") {
-			metadata = tweakMetadata{"Changes one supported AC power parameter only inside the dedicated Luxury plan.", "May reduce a supported device or CPU power-saving transition during play.", "High: can increase heat and power draw; unsupported settings are skipped.", "high"}
+			level := "high"
+			risk := "High: can increase heat and power draw, and the workload may show no gain; unsupported settings are skipped."
+			if isMediumPowerSetting(item.ID) {
+				level, risk = "medium", "Medium: changes a reviewed CPU performance policy only inside a cloned AC plan; heat and power use may increase."
+			}
+			metadata = tweakMetadata{"Copies one supported native Windows High Performance AC policy into a separate Luxury plan.", "May reduce a CPU, storage or device power-state transition during play.", risk, level}
 			ok = true
 		}
 		if !ok && strings.HasPrefix(item.ID, "ethernet-") {

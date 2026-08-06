@@ -35,7 +35,7 @@ func resolveTweak(id string) (tweakTarget, error) {
 	if !tweakIDPattern.MatchString(id) {
 		return tweakTarget{}, errors.New("неверный ID твика")
 	}
-	for _, profileID := range []string{profileRecommended, profileMaximum} {
+	for _, profileID := range []string{profileLite, profileMedium, profileMaximum} {
 		profile, _ := profileByID(profileID)
 		for _, change := range profile.Changes {
 			if change.ID == id {
@@ -47,14 +47,18 @@ func resolveTweak(id string) (tweakTarget, error) {
 	if id == "power-plan" {
 		return tweakTarget{profile: profileMaximum, fullPower: true}, nil
 	}
-	for _, setting := range optionalMaximumPowerSettings {
-		if powerTweakID(setting) == id {
-			active, err := activePowerGUID()
-			if err != nil {
-				return tweakTarget{}, err
-			}
-			if _, err := powerACValue(active, setting.Subgroup, setting.Setting); err != nil {
-				return tweakTarget{}, fmt.Errorf("твик питания не поддерживается этой системой: %w", err)
+	if strings.HasPrefix(id, "power-") {
+		active, err := activePowerGUID()
+		if err != nil {
+			return tweakTarget{}, err
+		}
+		settings, err := availableMaximumPowerSettings(active)
+		if err != nil {
+			return tweakTarget{}, err
+		}
+		for _, setting := range settings {
+			if powerTweakID(setting) != id {
+				continue
 			}
 			copy := setting
 			return tweakTarget{profile: profileMaximum, power: &copy}, nil
@@ -353,13 +357,12 @@ func validateTweakBackupShape(backup Backup, allowed map[string]RegChange) error
 		}
 		return nil
 	}
-	for _, setting := range optionalMaximumPowerSettings {
-		if powerTweakID(setting) == backup.TweakID {
-			if len(backup.Registry) != 0 || len(backup.Network) != 0 || backup.Power.CreatedGUID == "" || len(backup.Power.Settings) != 1 || backup.Power.Settings[0].Subgroup != setting.Subgroup || backup.Power.Settings[0].Setting != setting.Setting || backup.Power.Settings[0].Value != setting.Value || hasMouseState(backup.Mouse) || backup.NetworkApplied {
-				return errors.New("backup power-твика содержит лишние настройки")
-			}
-			return nil
+	if strings.HasPrefix(backup.TweakID, "power-") && len(backup.Power.Settings) == 1 {
+		setting := backup.Power.Settings[0]
+		if len(backup.Registry) != 0 || len(backup.Network) != 0 || backup.Power.CreatedGUID == "" || powerTweakID(setting) != backup.TweakID || !allowedPowerSetting(setting) || hasMouseState(backup.Mouse) || backup.NetworkApplied {
+			return errors.New("backup power-твика содержит лишние настройки")
 		}
+		return nil
 	}
 	if len(backup.Registry) == 0 && len(backup.Network) == 1 && !hasPowerState(backup) && !hasMouseState(backup.Mouse) && networkTweakID(backup.Network[0]) == backup.TweakID {
 		return nil
@@ -376,20 +379,28 @@ func hasMouseState(snapshot MouseSnapshot) bool {
 }
 
 func validatePowerSettings(settings []PowerSetting) error {
-	allowed := make(map[string]uint32, len(maximumPowerSettings)+len(optionalMaximumPowerSettings))
-	for _, setting := range append(append([]PowerSetting(nil), maximumPowerSettings...), optionalMaximumPowerSettings...) {
-		allowed[strings.ToLower(setting.Subgroup)+"|"+strings.ToLower(setting.Setting)] = setting.Value
-	}
 	seen := make(map[string]bool, len(settings))
 	for _, setting := range settings {
-		key := strings.ToLower(setting.Subgroup) + "|" + strings.ToLower(setting.Setting)
-		value, ok := allowed[key]
-		if !ok || seen[key] || value != setting.Value {
+		key := powerSettingKey(setting)
+		if seen[key] || !allowedPowerSetting(setting) {
 			return errors.New("backup содержит недопустимую настройку питания")
 		}
 		seen[key] = true
 	}
 	return nil
+}
+
+func allowedPowerSetting(setting PowerSetting) bool {
+	if strings.EqualFold(setting.Subgroup, processorPowerSubgroup) || strings.EqualFold(setting.Subgroup, storagePowerSubgroup) {
+		_, err := parsePowerGUID(setting.Setting)
+		return len(strings.Trim(setting.Setting, "{}")) == 36 && err == nil
+	}
+	for _, expected := range append(append([]PowerSetting(nil), maximumPowerSettings...), optionalMaximumPowerSettings...) {
+		if powerSettingKey(setting) == powerSettingKey(expected) {
+			return setting.Value == expected.Value
+		}
+	}
+	return false
 }
 
 func backupIDNow() string { return time.Now().UTC().Format("20060102T150405.000000000Z") }

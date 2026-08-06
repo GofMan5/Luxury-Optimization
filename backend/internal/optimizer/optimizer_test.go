@@ -20,7 +20,8 @@ import (
 )
 
 func TestShippedProfilesHaveNoConflictsOrDangerousTweaks(t *testing.T) {
-	for _, id := range []string{profileRecommended, profileMaximum} {
+	profileIDs := []string{profileLite, profileMedium, profileMaximum, profileLegacyRecommended, profileLegacyMaximum}
+	for _, id := range profileIDs {
 		profile, err := profileByID(id)
 		if err != nil {
 			t.Fatal(err)
@@ -29,7 +30,7 @@ func TestShippedProfilesHaveNoConflictsOrDangerousTweaks(t *testing.T) {
 			t.Fatalf("%s: %v", id, err)
 		}
 	}
-	for _, id := range []string{profileRecommended, profileMaximum} {
+	for _, id := range profileIDs {
 		profile, _ := profileByID(id)
 		for _, change := range profile.Changes {
 			target := strings.ToLower(change.Path + `\` + change.Name)
@@ -37,6 +38,81 @@ func TestShippedProfilesHaveNoConflictsOrDangerousTweaks(t *testing.T) {
 				if strings.Contains(target, forbidden) {
 					t.Fatalf("%s contains forbidden target %s", id, target)
 				}
+			}
+		}
+	}
+}
+
+func TestProfilesAreStrictlyTieredAndLegacyCompatible(t *testing.T) {
+	lite, _ := profileByID(profileLite)
+	medium, _ := profileByID(profileMedium)
+	maximum, _ := profileByID(profileMaximum)
+	if len(lite.Changes) != 6 || len(medium.Changes) != 11 || len(maximum.Changes) != 12 {
+		t.Fatalf("unexpected tier sizes: lite=%d medium=%d max=%d", len(lite.Changes), len(medium.Changes), len(maximum.Changes))
+	}
+	if lite.PerformancePlan || lite.NetworkLatency || !medium.PerformancePlan || medium.NetworkLatency || !maximum.PerformancePlan || !maximum.NetworkLatency {
+		t.Fatalf("unexpected tier capabilities: lite=%+v medium=%+v max=%+v", lite, medium, maximum)
+	}
+	for _, pair := range [][2]Profile{{lite, medium}, {medium, maximum}} {
+		superset := make(map[string]bool, len(pair[1].Changes))
+		for _, change := range pair[1].Changes {
+			superset[change.ID] = true
+		}
+		for _, change := range pair[0].Changes {
+			if !superset[change.ID] {
+				t.Fatalf("%s is not contained in %s", change.ID, pair[1].ID)
+			}
+		}
+	}
+	legacyRecommended, err := profileByID(profileLegacyRecommended)
+	if err != nil || len(legacyRecommended.Changes) != 10 {
+		t.Fatalf("legacy recommended profile changed: %+v %v", legacyRecommended, err)
+	}
+	legacyMaximum, err := profileByID(profileLegacyMaximum)
+	if err != nil || len(legacyMaximum.Changes) != 12 || canonicalProfileID(legacyMaximum.ID) != profileMaximum {
+		t.Fatalf("legacy maximum profile changed: %+v %v", legacyMaximum, err)
+	}
+	legacyBackup := Backup{
+		FormatVersion: 1, CatalogVersion: 1, Profile: profileLegacyMaximum, TargetUserSID: "S-1-5-21-1",
+		Power: PowerSnapshot{
+			PreviousGUID: "381b4222-f694-41f0-9685-ff5bb260df2e",
+			CreatedGUID:  "11111111-2222-3333-4444-555555555555",
+			Settings: []PowerSetting{
+				{Subgroup: processorPowerSubgroup, Setting: "bc5038f7-23e0-4960-96da-33abaf5935ec", Value: 100},
+				{Subgroup: processorPowerSubgroup, Setting: "893dee8e-2bef-41e0-89c6-b55d0929964c", Value: 5},
+				{Subgroup: "501a4d13-42af-4429-9fd1-a8218c268e20", Setting: "ee12f906-d277-404b-b6da-e5fa1a576df5", Value: 0},
+				{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", Value: 0},
+				{Subgroup: processorPowerSubgroup, Setting: "36687f9e-e3a5-4dbf-b1dc-15eb381c6863", Value: 0},
+				{Subgroup: processorPowerSubgroup, Setting: "be337238-0d82-4146-a960-4f3749d470c7", Value: 2},
+			},
+		},
+		PowerApplied: true,
+	}
+	for _, change := range legacyMaximum.Changes {
+		legacyBackup.Registry = append(legacyBackup.Registry, RegSnapshot{Change: change})
+	}
+	legacyBackup.CatalogDigest = backupTargetDigest(legacyBackup.Registry)
+	if err := validateBackup(legacyBackup); err != nil {
+		t.Fatalf("legacy 1.0.x maximum backup rejected: %v", err)
+	}
+}
+
+func TestLiteAndMediumContainNoHigherRiskItems(t *testing.T) {
+	for _, tier := range []struct {
+		id      string
+		allowed map[string]bool
+	}{
+		{profileLite, map[string]bool{"low": true}},
+		{profileMedium, map[string]bool{"low": true, "medium": true}},
+	} {
+		plan, err := buildPlan(tier.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		describePlan(&plan)
+		for _, item := range plan.Items {
+			if !tier.allowed[item.RiskLevel] {
+				t.Fatalf("%s contains %s-risk item %s", tier.id, item.RiskLevel, item.ID)
 			}
 		}
 	}
@@ -103,7 +179,7 @@ func TestDecodeNetworkPropertiesKeepsArrayShape(t *testing.T) {
 }
 
 func TestBackupValidationRejectsChangedTarget(t *testing.T) {
-	profile, _ := profileByID(profileRecommended)
+	profile, _ := profileByID(profileLite)
 	backup := Backup{FormatVersion: 1, CatalogVersion: 1, Profile: profile.ID, TargetUserSID: "S-1-5-21-1"}
 	for _, change := range profile.Changes {
 		backup.Registry = append(backup.Registry, RegSnapshot{Change: change})
@@ -119,7 +195,7 @@ func TestBackupValidationRejectsChangedTarget(t *testing.T) {
 }
 
 func TestPerTweakBackupRejectsCrossTarget(t *testing.T) {
-	profile, _ := profileByID(profileRecommended)
+	profile, _ := profileByID(profileLite)
 	change := profile.Changes[0]
 	backup := Backup{
 		FormatVersion: 1, CatalogVersion: 1, Profile: profile.ID, TweakID: change.ID,
@@ -247,13 +323,34 @@ func TestPowerSettingReadback(t *testing.T) {
 	if value > 100 {
 		t.Fatalf("invalid maximum processor state: %d", value)
 	}
-	settings := availableMaximumPowerSettings(active)
+	settings, err := availableMaximumPowerSettings(active)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(settings) < len(maximumPowerSettings) {
 		t.Fatalf("required power settings missing: %#v", settings)
 	}
-	for _, setting := range settings[len(maximumPowerSettings):] {
-		t.Logf("supported optional power setting: %s", setting.Name)
+	seen := make(map[string]bool, len(settings))
+	ids := make(map[string]bool, len(settings))
+	for _, setting := range settings {
+		key := powerSettingKey(setting)
+		id := powerTweakID(setting)
+		if seen[key] || ids[id] || setting.Name == "" || !allowedPowerSetting(setting) {
+			t.Fatalf("invalid or duplicate native power setting: %#v", setting)
+		}
+		seen[key] = true
+		ids[id] = true
 	}
+	medium, err := powerSettingsForProfile(profileMedium, active)
+	if err != nil || len(medium) == 0 || len(medium) > len(mediumPowerSettingIDs) {
+		t.Fatalf("invalid Medium power tier: count=%d err=%v", len(medium), err)
+	}
+	for _, setting := range medium {
+		if !isMediumPowerSetting(powerTweakID(setting)) {
+			t.Fatalf("unreviewed power setting entered Medium: %#v", setting)
+		}
+	}
+	t.Logf("supported native High Performance settings: %d", len(settings))
 }
 
 func TestMouseParametersReadback(t *testing.T) {

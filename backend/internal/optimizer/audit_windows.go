@@ -34,7 +34,7 @@ func windowsCapabilities() []Capability {
 
 func detectOptimizationFindings(audit *Audit) []Finding {
 	findings := []Finding{}
-	profile := recommendedProfile()
+	profile, _ := profileByID(profileLite)
 	changed := 0
 	for _, change := range profile.Changes {
 		matches, _, err := registryMatches(change)
@@ -48,10 +48,10 @@ func detectOptimizationFindings(audit *Audit) []Finding {
 	}
 	if changed > 0 {
 		findings = append(findings, Finding{
-			ID:       "recommended-profile-drift",
-			Title:    "Рекомендуемый игровой профиль применён не полностью",
+			ID:       "lite-profile-drift",
+			Title:    "Безопасный профиль Lite применён не полностью",
 			Evidence: fmt.Sprintf("Отличаются %d из %d настроек", changed, len(profile.Changes)),
-			Action:   "Открыть точный план рекомендуемого профиля.",
+			Action:   "Открыть точный план профиля Lite.",
 		})
 	}
 	startup := listStartupEntries()

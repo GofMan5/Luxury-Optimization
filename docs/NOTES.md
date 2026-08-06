@@ -13,9 +13,11 @@ Unsupported settings are capabilities, not errors: report them, mark them `skipp
 | Windows Game Mode and Game DVR controls | Native gaming policy and removable background capture work | Fixed targets, exact backup and read-back |
 | Windows mouse acceleration | Predictable pointer response | Registry plus live SPI capture/apply/restore |
 | Manual per-tweak apply | Lets users opt into only the changes they understand | Separate sealed backup, exact target read-back and persistent one-click rollback |
+| Lite / Medium / Max profiles | Makes risk and optimization intensity explicit instead of one ambiguous preset | Strictly nested targets; Lite low-risk only, Medium reviewed CPU subset, Max full native catalog |
 | Separate Windows performance plan | Does not mutate the user's original plan | New GUID, AC-only values, read-back and delete on rollback |
 | CPU 5–100%, EPP and boost | Responsive without pinning idle clocks at 100% | Only settings exposed by the machine |
-| PCIe/USB AC power saving | Can avoid wake latency in maximum profile | Temporary plan; battery/heat warning |
+| Native processor and storage AC catalog | Uses the installed Windows High Performance defaults instead of third-party constants | Processor/storage subgroups only; 512-entry bound, capability filter, cloned plan and exact read-back |
+| PCIe/USB AC power saving | Can avoid wake latency in Max | Temporary plan; battery/heat warning |
 | Ethernet EEE/Interrupt Moderation | Can reduce latency on some physical NICs | Only driver-advertised keywords; exact restore |
 | Temporary game boost | Keeps aggressive state scoped to a game session | Non-admin game, session lock and automatic Windows restore |
 | Explicit process priority/affinity | Useful in measured contention cases | Per-game only, no realtime, capability/read-back checks |
@@ -32,7 +34,7 @@ Unsupported settings are capabilities, not errors: report them, mark them `skipp
 | Tweak | Decision |
 |---|---|
 | HAGS and fullscreen optimizations | Per-GPU/per-driver results vary; require frametime evidence |
-| Core parking and scheduler policies | Hybrid CPUs and kernels differ; benchmark per system |
+| Custom core-parking and scheduler values | Hybrid CPUs differ; only the installed Windows High Performance defaults are accepted without a per-system benchmark |
 | MSI/IRQ affinity | Hardware topology and driver dependent |
 | RSS/RSC/offloads/TCP ACK recipes | Throughput, CPU and latency trade-offs differ |
 | Linux CPU governor changes | Distribution power managers and GameMode own this policy |

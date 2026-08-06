@@ -21,6 +21,8 @@ resolve exact target → capture state → seal backup → journal intent → mu
 
 Manual tweaks receive one backup ID each. Registry targets are allowlisted, Ethernet IDs include the adapter identity, mouse SPI rollback changes only the selected field, and a power tweak clones the active plan rather than editing it. Power backups must be unwound newest first.
 
+Profiles are strict nested tiers: Lite has six low-risk registry targets, Medium adds capture/input plus 11 reviewed processor policies, and Max adds the remaining native processor/storage catalog, PCIe/USB and physical Ethernet. The legacy `recommended` and `maximum` IDs remain read-compatible for old backups and saved games.
+
 On Linux, Windows registry, power and NIC mutations are unavailable. Audit, GameMode/process sessions, XDG startup and read-only systemd inventory use native capabilities and skip unsupported behavior without partial mutation.
 
 ## Recovery boundary

@@ -61,7 +61,7 @@ func TestChecksumManifestIsExactAndUnique(t *testing.T) {
 }
 
 func TestGitHubCheckHonorsPinnedReleaseChannel(t *testing.T) {
-	tag := "v1.0.1"
+	tag := "v1.0.2"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(writer, `{"tag_name":%q,"html_url":"https://github.com/%s/releases/tag/%s","assets":[]}`, tag, repositorySlug, tag)

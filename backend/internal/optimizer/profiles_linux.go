@@ -8,13 +8,15 @@ import (
 )
 
 func profileByID(id string) (Profile, error) {
-	switch id {
-	case profileRecommended:
-		return Profile{ID: id, Name: "Recommended Linux session", Description: "GameMode when available; no persistent system mutation"}, nil
+	switch canonicalProfileID(id) {
+	case profileLite:
+		return Profile{ID: id, Name: "Lite Linux session", Description: "GameMode when available; no persistent system mutation"}, nil
+	case profileMedium:
+		return Profile{ID: id, Name: "Medium Linux session", Description: "GameMode plus explicit per-game process controls; no persistent system mutation"}, nil
 	case profileMaximum:
-		return Profile{ID: id, Name: "Maximum Linux session", Description: "GameMode plus explicit process priority/affinity; no persistent system mutation"}, nil
+		return Profile{ID: id, Name: "Max Linux session", Description: "Maximum session controls supported by GameMode and explicit process settings; no persistent system mutation"}, nil
 	default:
-		return Profile{}, errors.New("неизвестный профиль: используйте recommended или maximum")
+		return Profile{}, errors.New("неизвестный профиль: используйте lite, medium или max")
 	}
 }
 
@@ -52,7 +54,7 @@ func buildPlan(profileID string) (Plan, error) {
 	if gameModeErr != nil {
 		plan.Warnings = append(plan.Warnings, "gamemoderun недоступен: boost продолжит работу без него.")
 	}
-	if profileID == profileMaximum && hardware.HasBattery {
+	if canonicalProfileID(profileID) == profileMaximum && hardware.HasBattery {
 		plan.Warnings = append(plan.Warnings, "Обнаружена батарея: используйте максимальный профиль только при питании от сети.")
 	}
 	return plan, nil

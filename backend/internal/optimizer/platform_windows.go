@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -26,21 +27,39 @@ import (
 
 var guidPattern = regexp.MustCompile(`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`)
 
+const (
+	processorPowerSubgroup       = "54533251-82be-4824-96c1-47b60b740d00"
+	storagePowerSubgroup         = "0012ee47-9041-4b5d-9b77-535fba8b1442"
+	highPerformancePersonality   = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+	powerAccessIndividualSetting = 18
+)
+
 var maximumPowerSettings = []PowerSetting{
-	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "bc5038f7-23e0-4960-96da-33abaf5935ec", Value: 100, Name: "Максимальное состояние CPU от сети"},
-	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "893dee8e-2bef-41e0-89c6-b55d0929964c", Value: 5, Name: "Минимальное состояние CPU 5% от сети"},
+	{Subgroup: processorPowerSubgroup, Setting: "bc5038f7-23e0-4960-96da-33abaf5935ec", Value: 100, Name: "Максимальное состояние CPU от сети"},
+	{Subgroup: processorPowerSubgroup, Setting: "893dee8e-2bef-41e0-89c6-b55d0929964c", Value: 5, Name: "Минимальное состояние CPU 5% от сети"},
+	{Subgroup: processorPowerSubgroup, Setting: "893dee8e-2bef-41e0-89c6-b55d0929964d", Value: 5, Name: "Минимальное состояние энергоэффективных CPU 5% от сети"},
+	{Subgroup: processorPowerSubgroup, Setting: "893dee8e-2bef-41e0-89c6-b55d0929964e", Value: 5, Name: "Минимальное состояние CPU класса эффективности 2: 5%"},
+	{Subgroup: storagePowerSubgroup, Setting: "6738e2c4-e8a5-4a42-b16a-e040e769756e", Value: 0, Name: "Не отключать накопитель во время работы от сети"},
 	{Subgroup: "501a4d13-42af-4429-9fd1-a8218c268e20", Setting: "ee12f906-d277-404b-b6da-e5fa1a576df5", Value: 0, Name: "PCIe Link State Power Management off"},
 	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", Value: 0, Name: "USB selective suspend off"},
 }
 
 var optionalMaximumPowerSettings = []PowerSetting{
-	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "36687f9e-e3a5-4dbf-b1dc-15eb381c6863", Value: 0, Name: "CPU Energy Performance Preference 0"},
-	{Subgroup: "54533251-82be-4824-96c1-47b60b740d00", Setting: "be337238-0d82-4146-a960-4f3749d470c7", Value: 2, Name: "CPU Boost mode: aggressive"},
+	{Subgroup: processorPowerSubgroup, Setting: "36687f9e-e3a5-4dbf-b1dc-15eb381c6863", Value: 0, Name: "CPU Energy Performance Preference 0"},
+	{Subgroup: processorPowerSubgroup, Setting: "be337238-0d82-4146-a960-4f3749d470c7", Value: 2, Name: "CPU Boost mode: aggressive"},
 }
 
 var (
-	wow64Once  sync.Once
-	wow64Value bool
+	wow64Once         sync.Once
+	wow64Value        bool
+	powerCatalogOnce  sync.Once
+	powerCatalog      []PowerSetting
+	powerCatalogErr   error
+	powrprofDLL       = windows.NewLazySystemDLL("powrprof.dll")
+	powerEnumerate    = powrprofDLL.NewProc("PowerEnumerate")
+	powerFriendlyName = powrprofDLL.NewProc("PowerReadFriendlyName")
+	powerACDefault    = powrprofDLL.NewProc("PowerReadACDefaultIndex")
+	powerACIndex      = powrprofDLL.NewProc("PowerReadACValueIndex")
 )
 
 func isWOW64() bool {
@@ -587,38 +606,60 @@ func newPowerGUID() (string, error) {
 }
 
 func createPerformancePlan(guid string) ([]PowerSetting, error) {
-	return createPerformancePlanWithSettings(guid, nil)
+	active, err := activePowerGUID()
+	if err != nil {
+		return nil, err
+	}
+	settings, err := availableMaximumPowerSettings(active)
+	if err != nil {
+		return nil, err
+	}
+	return createPerformancePlanFromSettings(guid, active, settings, "Luxury Optimization Max Performance", "Обратимая игровая схема Max")
 }
 
 func createPerformancePlanWithSettings(guid string, requested []PowerSetting) ([]PowerSetting, error) {
+	active, err := activePowerGUID()
+	if err != nil {
+		return nil, err
+	}
+	return createPerformancePlanFromSettings(guid, active, slices.Clone(requested), "Luxury Optimization Custom Tweak", "Исходная схема с одним обратимым изменением")
+}
+
+func createProfilePerformancePlan(guid, source, profileID string, settings []PowerSetting) ([]PowerSetting, error) {
+	name, description := "Luxury Optimization Medium", "Обратимая схема умеренной производительности"
+	if canonicalProfileID(profileID) == profileMaximum {
+		name, description = "Luxury Optimization Max Performance", "Обратимая игровая схема Max"
+	}
+	return createPerformancePlanFromSettings(guid, source, slices.Clone(settings), name, description)
+}
+
+func createPerformancePlanFromSettings(guid, source string, settings []PowerSetting, name, description string) ([]PowerSetting, error) {
 	powercfg := systemTool("powercfg.exe")
-	const ultimate = "e9a42b02-d5df-448d-aa00-03f14749eb61"
-	const highPerformance = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
-	source, name, description := ultimate, "Luxury Optimization Max Performance", "Обратимая игровая схема"
-	if requested != nil {
-		var err error
-		source, err = activePowerGUID()
-		if err != nil {
-			return nil, err
-		}
-		name, description = "Luxury Optimization Custom Tweak", "Исходная схема с одним обратимым изменением"
+	if len(settings) == 0 {
+		return nil, errors.New("поддерживаемые AC-настройки производительности не найдены")
 	}
-	_, err := runCommand(15*time.Second, powercfg, "/duplicatescheme", source, guid)
-	if err != nil && requested == nil {
-		if exists, _ := powerSchemeExists(guid); !exists {
-			_, err = runCommand(15*time.Second, powercfg, "/duplicatescheme", highPerformance, guid)
+	if err := validatePowerSettings(settings); err != nil {
+		return nil, err
+	}
+	active, err := activePowerGUID()
+	if err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(active, source) {
+		return nil, fmt.Errorf("активная схема питания изменилась с %s на %s; повторите план", source, active)
+	}
+	for _, setting := range settings {
+		if _, err := powerACValue(source, setting.Subgroup, setting.Setting); err != nil {
+			return nil, fmt.Errorf("настройка питания %s недоступна: %w", setting.Setting, err)
 		}
 	}
+	_, err = runCommand(15*time.Second, powercfg, "/duplicatescheme", source, guid)
 	if err != nil {
 		return nil, fmt.Errorf("создание отдельной схемы производительности: %w", err)
 	}
-	settings := availableMaximumPowerSettings(guid)
-	if requested != nil {
-		settings = requested
-		for _, setting := range settings {
-			if _, err := powerACValue(guid, setting.Subgroup, setting.Setting); err != nil {
-				return nil, fmt.Errorf("настройка питания %s недоступна: %w", setting.Setting, err)
-			}
+	for _, setting := range settings {
+		if _, err := powerACValue(guid, setting.Subgroup, setting.Setting); err != nil {
+			return nil, fmt.Errorf("настройка питания %s недоступна: %w", setting.Setting, err)
 		}
 	}
 	commands := [][]string{{"/changename", guid, name, description}}
@@ -631,7 +672,7 @@ func createPerformancePlanWithSettings(guid string, requested []PowerSetting) ([
 			return nil, err
 		}
 	}
-	active, err := activePowerGUID()
+	active, err = activePowerGUID()
 	if err != nil || !strings.EqualFold(active, guid) {
 		if err == nil {
 			err = fmt.Errorf("активна схема %s вместо %s", active, guid)
@@ -641,34 +682,179 @@ func createPerformancePlanWithSettings(guid string, requested []PowerSetting) ([
 	return settings, nil
 }
 
-func availableMaximumPowerSettings(scheme string) []PowerSetting {
-	settings := append([]PowerSetting(nil), maximumPowerSettings...)
-	for _, setting := range optionalMaximumPowerSettings {
+func availableMaximumPowerSettings(scheme string) ([]PowerSetting, error) {
+	nativeSettings, err := nativeHighPerformancePowerSettings()
+	if err != nil {
+		return nil, fmt.Errorf("каталог Windows High Performance недоступен: %w", err)
+	}
+	overrides := make(map[string]PowerSetting, len(maximumPowerSettings)+len(optionalMaximumPowerSettings))
+	for _, setting := range append(append([]PowerSetting(nil), maximumPowerSettings...), optionalMaximumPowerSettings...) {
+		overrides[powerSettingKey(setting)] = setting
+	}
+
+	candidates := make([]PowerSetting, 0, len(nativeSettings)+len(overrides))
+	seen := make(map[string]bool, cap(candidates))
+	for _, setting := range nativeSettings {
+		key := powerSettingKey(setting)
+		if override, ok := overrides[key]; ok {
+			setting = override
+		}
+		candidates = append(candidates, setting)
+		seen[key] = true
+	}
+	for _, setting := range overrides {
+		if !seen[powerSettingKey(setting)] {
+			candidates = append(candidates, setting)
+		}
+	}
+
+	settings := make([]PowerSetting, 0, len(candidates))
+	ids := make(map[string]bool, len(candidates))
+	for _, setting := range candidates {
 		if _, err := powerACValue(scheme, setting.Subgroup, setting.Setting); err == nil {
+			id := powerTweakID(setting)
+			if ids[id] {
+				return nil, fmt.Errorf("windows вернул неоднозначный GUID настройки питания %s", setting.Setting)
+			}
+			ids[id] = true
 			settings = append(settings, setting)
 		}
 	}
-	return settings
+	sort.Slice(settings, func(i, j int) bool {
+		if settings[i].Subgroup != settings[j].Subgroup {
+			return settings[i].Subgroup < settings[j].Subgroup
+		}
+		return settings[i].Setting < settings[j].Setting
+	})
+	return settings, nil
+}
+
+func powerSettingsForProfile(profileID, scheme string) ([]PowerSetting, error) {
+	settings, err := availableMaximumPowerSettings(scheme)
+	if err != nil {
+		return nil, err
+	}
+	switch canonicalProfileID(profileID) {
+	case profileMaximum:
+		return settings, nil
+	case profileMedium:
+		selected := make([]PowerSetting, 0, len(mediumPowerSettingIDs))
+		for _, setting := range settings {
+			if mediumPowerSettingIDs[strings.ToLower(setting.Setting)] {
+				selected = append(selected, setting)
+			}
+		}
+		return selected, nil
+	default:
+		return nil, nil
+	}
+}
+
+func nativeHighPerformancePowerSettings() ([]PowerSetting, error) {
+	powerCatalogOnce.Do(func() {
+		powerCatalog, powerCatalogErr = loadNativeHighPerformancePowerSettings()
+	})
+	return slices.Clone(powerCatalog), powerCatalogErr
+}
+
+func loadNativeHighPerformancePowerSettings() ([]PowerSetting, error) {
+	personality, err := parsePowerGUID(highPerformancePersonality)
+	if err != nil {
+		return nil, err
+	}
+	settings := make([]PowerSetting, 0, 128)
+	for _, subgroupID := range []string{processorPowerSubgroup, storagePowerSubgroup} {
+		subgroup, err := parsePowerGUID(subgroupID)
+		if err != nil {
+			return nil, err
+		}
+		for index := uint32(0); ; index++ {
+			if index >= 512 {
+				return nil, errors.New("каталог настроек питания Windows превысил безопасный предел")
+			}
+			var settingGUID windows.GUID
+			size := uint32(unsafe.Sizeof(settingGUID))
+			result, _, _ := powerEnumerate.Call(
+				0, 0, uintptr(unsafe.Pointer(&subgroup)), powerAccessIndividualSetting, uintptr(index),
+				uintptr(unsafe.Pointer(&settingGUID)), uintptr(unsafe.Pointer(&size)),
+			)
+			if result == uintptr(windows.ERROR_NO_MORE_ITEMS) {
+				break
+			}
+			if result != 0 {
+				return nil, windows.Errno(result)
+			}
+			if size != uint32(unsafe.Sizeof(settingGUID)) {
+				return nil, errors.New("PowerEnumerate вернул неверный размер GUID")
+			}
+			var value uint32
+			result, _, _ = powerACDefault.Call(
+				0, uintptr(unsafe.Pointer(&personality)), uintptr(unsafe.Pointer(&subgroup)),
+				uintptr(unsafe.Pointer(&settingGUID)), uintptr(unsafe.Pointer(&value)),
+			)
+			if result != 0 {
+				continue
+			}
+			setting := strings.ToLower(strings.Trim(settingGUID.String(), "{}"))
+			name := powerSettingFriendlyName(subgroup, settingGUID)
+			if name == "" {
+				name = "Windows performance policy " + setting
+			}
+			settings = append(settings, PowerSetting{Subgroup: subgroupID, Setting: setting, Value: value, Name: name})
+		}
+	}
+	if len(settings) == 0 {
+		return nil, errors.New("windows не вернул настройки производительности")
+	}
+	return settings, nil
+}
+
+func powerSettingFriendlyName(subgroup, setting windows.GUID) string {
+	var size uint32
+	result, _, _ := powerFriendlyName.Call(
+		0, 0, uintptr(unsafe.Pointer(&subgroup)), uintptr(unsafe.Pointer(&setting)), 0, uintptr(unsafe.Pointer(&size)),
+	)
+	if (result != 0 && result != uintptr(windows.ERROR_MORE_DATA)) || size < 2 || size > 4096 || size%2 != 0 {
+		return ""
+	}
+	buffer := make([]byte, size)
+	result, _, _ = powerFriendlyName.Call(
+		0, 0, uintptr(unsafe.Pointer(&subgroup)), uintptr(unsafe.Pointer(&setting)),
+		uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(&size)),
+	)
+	if result != 0 {
+		return ""
+	}
+	units := make([]uint16, len(buffer)/2)
+	for index := range units {
+		units[index] = binary.LittleEndian.Uint16(buffer[index*2:])
+	}
+	return displayText(strings.TrimSpace(strings.TrimRight(string(utf16.Decode(units)), "\x00")))
+}
+
+func powerSettingKey(setting PowerSetting) string {
+	return strings.ToLower(setting.Subgroup) + "|" + strings.ToLower(setting.Setting)
+}
+
+func parsePowerGUID(value string) (windows.GUID, error) {
+	return windows.GUIDFromString("{" + strings.Trim(value, "{}") + "}")
 }
 
 func powerACValue(scheme, subgroup, setting string) (uint32, error) {
-	parseGUID := func(value string) (windows.GUID, error) {
-		return windows.GUIDFromString("{" + strings.Trim(value, "{}") + "}")
-	}
-	schemeGUID, err := parseGUID(scheme)
+	schemeGUID, err := parsePowerGUID(scheme)
 	if err != nil {
 		return 0, err
 	}
-	subgroupGUID, err := parseGUID(subgroup)
+	subgroupGUID, err := parsePowerGUID(subgroup)
 	if err != nil {
 		return 0, err
 	}
-	settingGUID, err := parseGUID(setting)
+	settingGUID, err := parsePowerGUID(setting)
 	if err != nil {
 		return 0, err
 	}
 	var value uint32
-	result, _, _ := windows.NewLazySystemDLL("powrprof.dll").NewProc("PowerReadACValueIndex").Call(
+	result, _, _ := powerACIndex.Call(
 		0,
 		uintptr(unsafe.Pointer(&schemeGUID)),
 		uintptr(unsafe.Pointer(&subgroupGUID)),

@@ -31,7 +31,7 @@ func buildPlan(profileID string) (Plan, error) {
 	if hardwareErr != nil {
 		plan.Warnings = append(plan.Warnings, "Не удалось полностью прочитать железо: "+hardwareErr.Error())
 	}
-	if profile.ID == profileMaximum && hardware.HasBattery {
+	if canonicalProfileID(profile.ID) == profileMaximum && hardware.HasBattery {
 		plan.Warnings = append(plan.Warnings, "Обнаружена батарея: максимальный профиль увеличит нагрев и расход энергии от сети.")
 	}
 	for _, change := range profile.Changes {
@@ -42,14 +42,35 @@ func buildPlan(profileID string) (Plan, error) {
 		plan.Items = append(plan.Items, PlanItem{ID: change.ID, Category: change.Category, Name: change.Description, Current: current, Desired: formatDesired(change), Changed: !matches})
 	}
 	if profile.PerformancePlan {
-		current, err := activePowerGUID()
+		active, err := activePowerGUID()
 		if err != nil {
-			current = "не удалось прочитать: " + err.Error()
-		}
-		plan.Items = append(plan.Items, PlanItem{ID: "power-plan", Category: "Питание", Name: "Создать отдельную обратимую схему максимальной производительности", Current: current, Desired: "новая схема Luxury Optimization Max Performance", Changed: true})
-		for _, setting := range optionalMaximumPowerSettings {
-			if value, readErr := powerACValue(current, setting.Subgroup, setting.Setting); readErr == nil {
-				plan.Items = append(plan.Items, PlanItem{ID: "power-" + strings.ToLower(setting.Setting), Category: "Питание", Name: setting.Name, Current: fmt.Sprint(value), Desired: fmt.Sprint(setting.Value), Changed: value != setting.Value})
+			plan.Warnings = append(plan.Warnings, "Схема питания недоступна и будет пропущена: "+err.Error())
+		} else {
+			settings, catalogErr := powerSettingsForProfile(profile.ID, active)
+			if catalogErr != nil {
+				plan.Warnings = append(plan.Warnings, "Каталог питания Windows недоступен и будет пропущен: "+catalogErr.Error())
+			} else if len(settings) == 0 {
+				plan.Warnings = append(plan.Warnings, "Поддерживаемые AC-настройки этого профиля не найдены и будут пропущены.")
+			} else {
+				name, desired := "Создать отдельную обратимую схему Medium", "новая схема Luxury Optimization Medium"
+				if canonicalProfileID(profile.ID) == profileMaximum {
+					name, desired = "Создать отдельную обратимую схему Max", "новая схема Luxury Optimization Max Performance"
+				}
+				plan.Items = append(plan.Items, PlanItem{ID: "power-plan", Category: "Питание", Name: name, Current: active, Desired: desired, Changed: true})
+				for _, setting := range settings {
+					value, readErr := powerACValue(active, setting.Subgroup, setting.Setting)
+					if readErr != nil {
+						continue
+					}
+					category := "Питание"
+					switch {
+					case strings.EqualFold(setting.Subgroup, processorPowerSubgroup):
+						category = "Процессор"
+					case strings.EqualFold(setting.Subgroup, storagePowerSubgroup):
+						category = "Накопители"
+					}
+					plan.Items = append(plan.Items, PlanItem{ID: powerTweakID(setting), Category: category, Name: setting.Name, Current: fmt.Sprint(value), Desired: fmt.Sprint(setting.Value), Changed: value != setting.Value})
+				}
 			}
 		}
 	}
@@ -123,17 +144,24 @@ func applyProfile(profileID string, boostSession bool) (string, error) {
 			return "", err
 		}
 	}
+	var profilePowerSettings []PowerSetting
 	if profile.PerformancePlan {
 		backup.Power.PreviousGUID, err = activePowerGUID()
 		if err != nil {
 			return "", err
 		}
-		backup.Power.CreatedGUID, err = newPowerGUID()
+		profilePowerSettings, err = powerSettingsForProfile(profile.ID, backup.Power.PreviousGUID)
 		if err != nil {
 			return "", err
 		}
-		// Journal the destination GUID before powercfg can create or activate it.
-		backup.PowerApplied = true
+		if len(profilePowerSettings) > 0 {
+			backup.Power.CreatedGUID, err = newPowerGUID()
+			if err != nil {
+				return "", err
+			}
+			// Journal the destination GUID before powercfg can create or activate it.
+			backup.PowerApplied = true
+		}
 	}
 	if profile.NetworkLatency {
 		properties, netErr := queryNetworkProperties()
@@ -156,8 +184,8 @@ func applyProfile(profileID string, boostSession bool) (string, error) {
 		return backup.Path, fmt.Errorf("%w; применённые изменения автоматически отменены", cause)
 	}
 
-	if profile.PerformancePlan {
-		backup.Power.Settings, err = createPerformancePlan(backup.Power.CreatedGUID)
+	if backup.PowerApplied {
+		backup.Power.Settings, err = createProfilePerformancePlan(backup.Power.CreatedGUID, backup.Power.PreviousGUID, profile.ID, profilePowerSettings)
 		if err != nil {
 			return fail(err)
 		}

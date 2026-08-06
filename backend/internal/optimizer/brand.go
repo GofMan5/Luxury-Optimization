@@ -6,6 +6,6 @@ const (
 	repositorySlug = "GofMan5/Luxury-Optimization"
 )
 
-var version = "1.0.1-dev"
+var version = "1.0.2-dev"
 
 func ProductVersion() string { return version }
