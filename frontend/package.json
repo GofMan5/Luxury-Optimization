@@ -1,0 +1,37 @@
+{
+  "name": "luxury-optimization-desktop",
+  "private": true,
+  "version": "1.0.1",
+  "type": "module",
+  "packageManager": "pnpm@10.26.2",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "sidecar:build": "node scripts/build-sidecar.mjs",
+    "dev:prepare": "pnpm sidecar:build && pnpm dev",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/plugin-process": "2.3.1",
+    "@tauri-apps/plugin-updater": "2.10.1",
+    "lucide-react": "1.28.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.4",
+    "typescript": "~6.0.2",
+    "vite": "8.2.0",
+    "vitest": "4.1.10"
+  }
+}

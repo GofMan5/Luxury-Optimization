@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Luxury Optimization",
+  "version": "1.0.1",
+  "identifier": "io.github.gofman5.luxury-optimization",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://127.0.0.1:1421",
+    "beforeDevCommand": "pnpm dev:prepare",
+    "beforeBuildCommand": "pnpm sidecar:build && pnpm build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Luxury Optimization",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": "all",
+    "category": "Utility",
+    "shortDescription": "Measured, reversible gaming optimization",
+    "longDescription": "Luxury Optimization audits system capabilities and applies bounded gaming optimizations with backup, native read-back and rollback.",
+    "externalBin": ["binaries/luxury-optimization-backend"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaW5pIHB1YmxpYyBrZXk6IDU5QjgwMkU2QUIzNTFDMjYKUldRbUhEV3I1Z0s0V2JXL1lYRkp1WGQ3Z3pacmI2TVIrdDVNZnZ2QnRES3k4RkxHbGRnNGVlNFEK",
+      "endpoints": [
+        "https://github.com/GofMan5/Luxury-Optimization/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

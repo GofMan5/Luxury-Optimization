@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-version="${1:-1.0.0}"
+version="${1:-1.0.1}"
 if ! printf '%s\n' "$version" | grep -Eq '^1\.0\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
   printf '%s\n' 'version must stay in the 1.0.x release line' >&2
   exit 2
@@ -23,7 +23,7 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-cd "$project_root"
+cd "$project_root/backend"
 go mod verify
 go test -mod=readonly ./...
 go vet -mod=readonly ./...
@@ -37,7 +37,7 @@ linux arm64 Luxury-Optimization-linux-arm64'
 
 printf '%s\n' "$targets" | while read -r goos goarch name; do
   CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" \
-    go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$version" -o "$staging/$name" .
+    go build -mod=readonly -trimpath -ldflags "-s -w -X github.com/GofMan5/Luxury-Optimization/internal/optimizer.version=$version" -o "$staging/$name" ./cmd/luxury-optimization
 done
 
 : > "$staging/SHA256SUMS.txt"

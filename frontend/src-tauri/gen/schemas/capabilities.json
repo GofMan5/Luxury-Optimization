@@ -1,0 +1,1 @@
+{"main-window":{"identifier":"main-window","description":"The WebView can call only the narrow Rust sidecar bridge.","local":true,"windows":["main"],"permissions":["core:default","process:allow-restart","updater:default"]}}

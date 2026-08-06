@@ -12,6 +12,7 @@ Unsupported settings are capabilities, not errors: report them, mark them `skipp
 |---|---|---|
 | Windows Game Mode and Game DVR controls | Native gaming policy and removable background capture work | Fixed targets, exact backup and read-back |
 | Windows mouse acceleration | Predictable pointer response | Registry plus live SPI capture/apply/restore |
+| Manual per-tweak apply | Lets users opt into only the changes they understand | Separate sealed backup, exact target read-back and persistent one-click rollback |
 | Separate Windows performance plan | Does not mutate the user's original plan | New GUID, AC-only values, read-back and delete on rollback |
 | CPU 5–100%, EPP and boost | Responsive without pinning idle clocks at 100% | Only settings exposed by the machine |
 | PCIe/USB AC power saving | Can avoid wake latency in maximum profile | Temporary plan; battery/heat warning |

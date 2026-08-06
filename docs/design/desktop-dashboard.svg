@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Luxury Optimization desktop dashboard concept</title>
+  <desc id="desc">Dark desktop app with a compact navigation rail, system audit summary, profile actions, capability list and session status.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06070a"/><stop offset="1" stop-color="#101620"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f4e2a8"/><stop offset=".48" stop-color="#d7b665"/><stop offset="1" stop-color="#a7792d"/></linearGradient>
+    <radialGradient id="halo"><stop stop-color="#d7b665" stop-opacity=".18"/><stop offset="1" stop-color="#d7b665" stop-opacity="0"/></radialGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="16" stdDeviation="26" flood-color="#000" flood-opacity=".28"/></filter>
+  </defs>
+  <rect width="1600" height="1000" rx="24" fill="url(#bg)"/>
+  <circle cx="960" cy="180" r="560" fill="url(#halo)"/>
+  <rect x="1" y="1" width="1598" height="998" rx="23" fill="none" stroke="#d7b665" stroke-opacity=".38" stroke-width="2"/>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <g id="sidebar">
+      <rect x="24" y="24" width="250" height="952" rx="20" fill="#090c11" stroke="#d7b665" stroke-opacity=".18"/>
+      <circle cx="72" cy="76" r="25" fill="none" stroke="url(#gold)" stroke-width="3"/>
+      <path d="M62 61v29h20" fill="none" stroke="url(#gold)" stroke-width="6"/>
+      <text x="110" y="70" fill="#f5f1e7" font-size="18" font-weight="700">Luxury</text>
+      <text x="110" y="91" fill="#d7b665" font-size="13" letter-spacing="2">OPTIMIZATION</text>
+      <line x1="48" y1="122" x2="250" y2="122" stroke="#fff" stroke-opacity=".08"/>
+
+      <g font-size="15" fill="#8893a2">
+        <g transform="translate(44 152)"><rect width="206" height="48" rx="12" fill="#d7b665" fill-opacity=".12"/><rect width="3" height="48" rx="2" fill="#d7b665"/><circle cx="26" cy="24" r="8" fill="none" stroke="#e8cf88" stroke-width="2"/><path d="M26 16v8l6 4" stroke="#e8cf88" stroke-width="2"/><text x="50" y="30" fill="#f1e9d5" font-weight="650">Overview</text></g>
+        <g transform="translate(44 212)"><path d="M17 14h18v18H17zM21 10h10" fill="none" stroke="#8893a2" stroke-width="2"/><text x="50" y="28">Tweaks</text></g>
+        <g transform="translate(44 260)"><path d="M17 17h18v14H17zM21 13h10M22 24h8" fill="none" stroke="#8893a2" stroke-width="2"/><text x="50" y="28">System</text></g>
+        <g transform="translate(44 308)"><path d="M19 19a10 10 0 1 1-2 12M17 19v8h8" fill="none" stroke="#8893a2" stroke-width="2"/><text x="50" y="28">Restore</text></g>
+        <g transform="translate(44 356)"><path d="M26 13v22M18 21l8-8 8 8" fill="none" stroke="#8893a2" stroke-width="2"/><text x="50" y="28">Updates</text></g>
+      </g>
+      <g transform="translate(48 892)"><rect width="202" height="42" rx="12" fill="#090d13" stroke="#fff" stroke-opacity=".1"/><rect x="4" y="4" width="96" height="34" rx="9" fill="#d7b665"/><text x="48" y="26" text-anchor="middle" fill="#17130b" font-size="12" font-weight="700">RU</text><text x="151" y="26" text-anchor="middle" fill="#8793a1" font-size="12">EN</text></g>
+    </g>
+
+    <g transform="translate(306 40)">
+      <text x="0" y="30" fill="#f5f1e7" font-size="26" font-weight="700">System overview</text>
+      <text x="0" y="57" fill="#7f8996" font-size="14">Measured changes, exact rollback, no placebo presets.</text>
+      <g transform="translate(1030 2)"><circle cx="14" cy="15" r="6" fill="#63d59f"/><text x="31" y="20" fill="#abb4bf" font-size="13">Windows 11 Pro</text></g>
+
+      <g transform="translate(0 92)" filter="url(#shadow)">
+        <rect width="860" height="292" rx="22" fill="#0d1118" stroke="#d7b665" stroke-opacity=".28"/>
+        <text x="38" y="54" fill="#d7b665" font-size="14" letter-spacing="2">CURRENT STATE</text>
+        <text x="38" y="108" fill="#f5f1e7" font-size="38" font-weight="720">Ready for a measured pass</text>
+        <text x="38" y="143" fill="#98a3b0" font-size="16">2 recommendations differ from the safe gaming profile.</text>
+        <g transform="translate(38 181)"><rect width="216" height="52" rx="13" fill="url(#gold)"/><text x="108" y="33" text-anchor="middle" fill="#17130b" font-size="15" font-weight="750">Review recommended</text></g>
+        <g transform="translate(270 181)"><rect width="142" height="52" rx="13" fill="none" stroke="#d7b665" stroke-opacity=".55"/><text x="71" y="33" text-anchor="middle" fill="#ead69c" font-size="15" font-weight="650">Run audit</text></g>
+        <g transform="translate(610 45)"><circle cx="104" cy="104" r="84" fill="#080a0e" stroke="#d7b665" stroke-opacity=".2"/><circle cx="104" cy="104" r="69" fill="none" stroke="#d7b665" stroke-width="8" stroke-dasharray="358 76" stroke-linecap="round" transform="rotate(-90 104 104)"/><text x="104" y="101" text-anchor="middle" fill="#f4e2a8" font-size="38" font-weight="720">8/10</text><text x="104" y="129" text-anchor="middle" fill="#7f8996" font-size="12" letter-spacing="1">TARGETS MATCH</text></g>
+      </g>
+
+      <g transform="translate(884 92)">
+        <rect width="360" height="292" rx="22" fill="#0b0f15" stroke="#fff" stroke-opacity=".08"/>
+        <text x="28" y="45" fill="#f5f1e7" font-size="18" font-weight="650">Active profile</text>
+        <text x="28" y="74" fill="#8f9aa7" font-size="14">Windows gaming baseline</text>
+        <line x1="28" y1="98" x2="332" y2="98" stroke="#fff" stroke-opacity=".08"/>
+        <text x="28" y="136" fill="#7f8996" font-size="13">Power plan</text><text x="332" y="136" text-anchor="end" fill="#d8dee7" font-size="13">Balanced</text>
+        <text x="28" y="174" fill="#7f8996" font-size="13">Boost session</text><text x="332" y="174" text-anchor="end" fill="#d8dee7" font-size="13">Inactive</text>
+        <text x="28" y="212" fill="#7f8996" font-size="13">Last audit</text><text x="332" y="212" text-anchor="end" fill="#d8dee7" font-size="13">Just now</text>
+        <text x="28" y="250" fill="#7f8996" font-size="13">Restore points</text><text x="332" y="250" text-anchor="end" fill="#63d59f" font-size="13">3 verified</text>
+      </g>
+
+      <text x="0" y="430" fill="#f5f1e7" font-size="20" font-weight="650">Capabilities</text>
+      <text x="0" y="456" fill="#788390" font-size="13">Only controls supported by this machine are actionable.</text>
+      <g transform="translate(0 480)">
+        <rect width="1244" height="238" rx="20" fill="#0b0f15" stroke="#fff" stroke-opacity=".07"/>
+        <g transform="translate(28 25)"><circle cx="10" cy="10" r="6" fill="#63d59f"/><text x="32" y="15" fill="#dfe4eb" font-size="15" font-weight="600">Persistent profile</text><text x="340" y="15" fill="#84909d" font-size="13">Backup · apply · read-back · rollback</text><text x="1170" y="15" text-anchor="end" fill="#63d59f" font-size="13">Reversible</text></g>
+        <line x1="28" y1="66" x2="1216" y2="66" stroke="#fff" stroke-opacity=".07"/>
+        <g transform="translate(28 83)"><circle cx="10" cy="10" r="6" fill="#63d59f"/><text x="32" y="15" fill="#dfe4eb" font-size="15" font-weight="600">Game boost</text><text x="340" y="15" fill="#84909d" font-size="13">Non-elevated game with automatic restore</text><text x="1170" y="15" text-anchor="end" fill="#63d59f" font-size="13">Session</text></g>
+        <line x1="28" y1="124" x2="1216" y2="124" stroke="#fff" stroke-opacity=".07"/>
+        <g transform="translate(28 141)"><circle cx="10" cy="10" r="6" fill="#d7b665"/><text x="32" y="15" fill="#dfe4eb" font-size="15" font-weight="600">Ethernet latency controls</text><text x="340" y="15" fill="#84909d" font-size="13">Adapter exposes two supported properties</text><text x="1170" y="15" text-anchor="end" fill="#ead69c" font-size="13">Available</text></g>
+        <line x1="28" y1="182" x2="1216" y2="182" stroke="#fff" stroke-opacity=".07"/>
+        <g transform="translate(28 199)"><circle cx="10" cy="10" r="6" fill="#56616e"/><text x="32" y="15" fill="#dfe4eb" font-size="15" font-weight="600">Unsupported tweaks</text><text x="340" y="15" fill="#84909d" font-size="13">Private GPU keys, BCD and security changes stay excluded</text><text x="1170" y="15" text-anchor="end" fill="#788390" font-size="13">Skipped</text></g>
+      </g>
+
+      <g transform="translate(0 752)">
+        <rect width="1244" height="130" rx="20" fill="#0a0e14" stroke="#fff" stroke-opacity=".07"/>
+        <text x="28" y="42" fill="#f5f1e7" font-size="17" font-weight="630">Session</text><text x="28" y="72" fill="#7f8996" font-size="14">No game boost is active. System state is stable.</text>
+        <g transform="translate(1010 39)"><rect width="204" height="52" rx="13" fill="none" stroke="#fff" stroke-opacity=".12"/><text x="102" y="33" text-anchor="middle" fill="#c9d0d9" font-size="14" font-weight="600">Open game profiles</text></g>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -10,6 +10,7 @@ The target is broad gaming-optimization coverage with fewer permanent tweaks and
 - Steam discovery on both platforms; Epic/Xbox discovery on Windows.
 - Atomic per-game profiles, startup management, service/network inventory and benchmark comparison.
 - Opt-in verified updates from GitHub Releases.
+- Tauri v2 desktop UI with RU/EN, compact per-tweak actions and signed automatic update checks.
 
 ## Next vertical slices
 

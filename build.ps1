@@ -1,10 +1,11 @@
 param(
     [ValidatePattern('^1\.0\.\d+(?:-[0-9A-Za-z.-]+)?$')]
-    [string]$Version = '1.0.0'
+    [string]$Version = '1.0.1'
 )
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
+$backendPath = Join-Path $projectRoot 'backend'
 $distPath = Join-Path $projectRoot 'dist'
 $stagingPath = $null
 $previousPath = $null
@@ -22,7 +23,7 @@ $targets = @(
     [pscustomobject]@{ OS = 'linux';   Arch = 'arm64'; Name = 'Luxury-Optimization-linux-arm64' }
 )
 
-Push-Location $projectRoot
+Push-Location $backendPath
 try {
     go mod verify
     if ($LASTEXITCODE -ne 0) { throw "go mod verify failed with exit code $LASTEXITCODE" }
@@ -40,7 +41,7 @@ try {
         $env:GOOS = $target.OS
         $env:GOARCH = $target.Arch
         $outputPath = Join-Path $stagingPath $target.Name
-        go build -mod=readonly -trimpath -ldflags "-s -w -X main.version=$Version" -o $outputPath .
+        go build -mod=readonly -trimpath -ldflags "-s -w -X github.com/GofMan5/Luxury-Optimization/internal/optimizer.version=$Version" -o $outputPath ./cmd/luxury-optimization
         if ($LASTEXITCODE -ne 0) { throw "go build $($target.OS)/$($target.Arch) failed with exit code $LASTEXITCODE" }
     }
 

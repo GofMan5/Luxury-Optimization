@@ -1,0 +1,24 @@
+import { lazy, Suspense, startTransition, useState } from 'react'
+import type { RouteID } from './routes'
+import { AppShell } from '../widgets/app-shell/app-shell'
+import { LoadingState } from '../shared/ui/feedback'
+
+const OverviewScreen = lazy(() => import('../features/overview/overview-screen'))
+const ProfilesScreen = lazy(() => import('../features/profiles/profiles-screen'))
+const SystemScreen = lazy(() => import('../features/system/system-screen'))
+const RestoreScreen = lazy(() => import('../features/restore/restore-screen'))
+const UpdatesScreen = lazy(() => import('../features/updates/updates-screen'))
+
+export default function App() {
+  const [route, setRoute] = useState<RouteID>('overview')
+  const navigate = (next: RouteID) => startTransition(() => setRoute(next))
+  let screen
+  switch (route) {
+    case 'overview': screen = <OverviewScreen onNavigate={navigate} />; break
+    case 'profiles': screen = <ProfilesScreen />; break
+    case 'system': screen = <SystemScreen />; break
+    case 'restore': screen = <RestoreScreen />; break
+    case 'updates': screen = <UpdatesScreen />; break
+  }
+  return <AppShell route={route} onNavigate={navigate}><Suspense fallback={<LoadingState />}>{screen}</Suspense></AppShell>
+}

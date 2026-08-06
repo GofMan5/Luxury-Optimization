@@ -1,22 +1,32 @@
 # Architecture
 
-Luxury Optimization is one Go module with a shared CLI core and build-selected platform files.
+Luxury Optimization is a Tauri v2 desktop application with a React frontend and a Go sidecar. The boundary is a versioned, newline-delimited JSON protocol; the WebView cannot execute arbitrary commands.
 
-## Shared
+## Frontend
 
-- `brand.go`: product, release channel and repository identity.
-- `types.go`: stable audit, plan, capability and Windows backup data contracts.
-- `network.go`, `benchmark.go`: portable measurement tools.
-- `update.go`: GitHub Release discovery, version/channel policy, URL and size boundaries, checksum verification and config.
+`frontend/src` is organized by user-facing slices: overview, tweaks, system, restore and updates. Shared contracts describe only JSON data crossing the sidecar boundary. A small TTL cache deduplicates reads and invalidates the affected prefixes after mutations.
 
-## Windows
+The Tauri host in `frontend/src-tauri` owns the sidecar process. Rust validates frame size, request IDs and an exact method allowlist before a command reaches Go. The sidecar has no shell passthrough.
 
-Windows files retain the mature transaction: plan → sealed backup → apply → native read-back → rollback. The game process never inherits elevation. Legacy state, registry and mutex names remain unchanged so old backups can be restored and old/new binaries cannot mutate concurrently.
+## Backend
 
-## Linux
+`backend/internal/app` dispatches the same exact method allowlist into vertical feature handlers under `backend/internal/features`. Platform and transaction code stays behind `backend/internal/optimizer`; the frontend never receives registry paths or executable primitives to submit.
 
-Linux files use `/etc/os-release`, `/proc`, `/sys`, XDG paths, `systemctl`, `flock`, `setpriority` and `sched_setaffinity`. There is no fake registry or universal governor mutation. Missing GameMode, systemd or `CAP_SYS_NICE` produces a capability result and a safe fallback.
+On Windows, every persistent operation follows:
+
+```text
+resolve exact target → capture state → seal backup → journal intent → mutate → native read-back
+                                                        └─ failure → verified rollback
+```
+
+Manual tweaks receive one backup ID each. Registry targets are allowlisted, Ethernet IDs include the adapter identity, mouse SPI rollback changes only the selected field, and a power tweak clones the active plan rather than editing it. Power backups must be unwound newest first.
+
+On Linux, Windows registry, power and NIC mutations are unavailable. Audit, GameMode/process sessions, XDG startup and read-only systemd inventory use native capabilities and skip unsupported behavior without partial mutation.
+
+## Recovery boundary
+
+Production Windows backups remain under the legacy ProgramData location for compatibility. The JSON file is restricted to administrators and SYSTEM, and its SHA-256 is sealed separately in HKLM. User-local quick-rollback markers contain only validated tweak and backup IDs; the elevated restore path revalidates the seal, owner SID, catalog target and backup shape before changing state.
 
 ## Release boundary
 
-Build scripts produce five raw binaries and one checksum manifest. The updater accepts only the configured release line and exact target filename; platform installers receive bytes only after metadata, host, size and SHA-256 checks pass.
+Windows and Linux bundles are built from the same source contracts. Updates must select the exact OS/architecture asset, stay on the `1.0.x` line and pass release-signature/checksum verification before installation.

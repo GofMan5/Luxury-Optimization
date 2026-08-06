@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "The WebView can call only the narrow Rust sidecar bridge.",
+  "windows": ["main"],
+  "permissions": ["core:default", "process:allow-restart", "updater:default"]
+}

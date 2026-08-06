@@ -2,6 +2,13 @@
 /dist/
 /build/
 /coverage/
+**/dist/
+**/build/
+**/coverage/
+**/node_modules/
+**/target/
+frontend/src-tauri/binaries/
+*.tsbuildinfo
 *.test
 *.prof
 *.pprof

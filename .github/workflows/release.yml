@@ -7,39 +7,113 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  verify:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Validate release tag
+      - name: Validate release tag and version
         shell: bash
         run: |
           [[ "$GITHUB_REF_NAME" =~ ^v1\.0\.[0-9]+$ ]] || { echo "release must stay in 1.0.x"; exit 1; }
-      - name: Build and verify
-        shell: bash
-        run: |
-          chmod +x build.sh
-          ./build.sh "${GITHUB_REF_NAME#v}"
-          go run honnef.co/go/tools/cmd/staticcheck@v0.6.1 ./...
-          go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
-          ./dist/Luxury-Optimization-linux-amd64 version | grep -F "${GITHUB_REF_NAME#v}"
-      - name: Publish GitHub Release
+          test "$(node -p "require('./frontend/package.json').version")" = "${GITHUB_REF_NAME#v}"
+          grep -Fq "version = \"${GITHUB_REF_NAME#v}\"" frontend/src-tauri/Cargo.toml
+          test "$(node -p "require('./frontend/src-tauri/tauri.conf.json').version")" = "${GITHUB_REF_NAME#v}"
+      - name: Install Linux desktop dependencies
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/src-tauri -> target
+      - run: go test -race -count=1 ./...
+        working-directory: backend
+      - run: go vet ./...
+        working-directory: backend
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - run: pnpm check && pnpm sidecar:build
+        working-directory: frontend
+      - run: cargo fmt --check && cargo test --locked && cargo clippy --locked --all-targets -- -D warnings
+        working-directory: frontend/src-tauri
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: frontend/src-tauri
+
+  publish:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: frontend/src-tauri -> target
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+      - uses: tauri-apps/tauri-action@v0
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: frontend
+          tagName: ${{ github.ref_name }}
+          releaseName: Luxury Optimization ${{ github.ref_name }}
+          releaseBody: Signed Windows and Linux desktop bundles. See CHANGELOG.md for details.
+          releaseDraft: true
+          prerelease: false
+          updaterJsonPreferNsis: true
+
+  finalize:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify updater assets and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            dist/Luxury-Optimization-windows-amd64.exe \
-            dist/Luxury-Optimization-windows-arm64.exe \
-            dist/Luxury-Optimization-windows-386.exe \
-            dist/Luxury-Optimization-linux-amd64 \
-            dist/Luxury-Optimization-linux-arm64 \
-            dist/SHA256SUMS.txt \
-            --verify-tag --generate-notes --title "Luxury Optimization ${GITHUB_REF_NAME#v}"
+          assets="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          grep -Fxq 'latest.json' <<<"$assets"
+          grep -Eq '\.sig$' <<<"$assets"
+          grep -Eq '(\.exe|\.msi)$' <<<"$assets"
+          grep -Eq '(\.AppImage|\.deb|\.rpm)$' <<<"$assets"
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
