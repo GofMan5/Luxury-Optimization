@@ -25,6 +25,8 @@ Profiles are strict nested tiers: Lite has six low-risk registry targets, Medium
 
 Saved-game compatibility stays in the legacy `games.json` v1 location and mutex. Launch/evidence history is isolated in `game-history.json`: bounded records, atomic replacement, protected user permissions, recomputed benchmark verdicts and no executable data beyond the saved profile ID.
 
+The background advisor takes two bounded native process snapshots. Windows uses `NtQuerySystemInformation`; Linux reads bounded `/proc` counters. CPU is normalized to total logical capacity, I/O is a byte-rate delta and memory is informational only. Startup commands, service PIDs and systemd cgroups are correlated after process creation identity is read back; no advisor endpoint mutates state.
+
 On Linux, Windows registry, power and NIC mutations are unavailable. Audit, GameMode/process sessions, XDG startup and read-only systemd inventory use native capabilities and skip unsupported behavior without partial mutation.
 
 ## Recovery boundary

@@ -24,7 +24,8 @@ Unsupported settings are capabilities, not errors: report them, mark them `skipp
 | Game discovery and saved profiles | Removes setup friction | Read-only manifests, bounded scan, canonical executable revalidation |
 | Per-game launch/evidence history | Keeps measured decisions tied to the workload that produced them | Separate bounded atomic file; successful helper starts only; comparison recomputed on load |
 | Startup manager | Reduces deliberate background load | Explicit user entry only; system scope remains read-only |
-| Service inventory | Makes background state visible | Read-only on Windows SCM and systemd |
+| Service inventory | Makes background state visible | Guarded single-target startup changes on Windows; critical services protected; Linux systemd stays read-only |
+| Measured background-load advisor | Finds active CPU/I/O contenders without a debloat list | Two native snapshots, exact startup/service links, protected system targets and no direct mutation |
 | TCP and benchmark tools | Produce comparable evidence | Bounded timeouts, at least three runs, median/MAD threshold |
 | Linux GameMode | Native session policy used by games and distributions | Used only when `gamemoderun` exists; direct fallback |
 | Linux nice/affinity | Native session process controls | Missing `CAP_SYS_NICE` or affinity support is skipped |

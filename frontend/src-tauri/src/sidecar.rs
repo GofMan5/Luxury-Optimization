@@ -213,6 +213,7 @@ fn allowed_method(method: &str) -> bool {
             | "services.set"
             | "network.interfaces"
             | "network.test"
+            | "advisor.background"
             | "benchmark.compare"
             | "gaming.scan"
             | "gaming.saved"
@@ -374,6 +375,7 @@ mod tests {
             "optimization.apply_tweak",
             "optimization.restore_tweak",
             "services.list",
+            "advisor.background",
             "benchmark.compare",
             "gaming.attach_benchmark",
             "updates.status",

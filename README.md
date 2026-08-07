@@ -21,6 +21,7 @@ No debloat scripts, timer daemons, memory cleaners, private GPU keys or mass ser
 - Lite, Medium and Max presets with strict nested scopes and a complete preflight plan.
 - Built-in before/after benchmark comparison with CapFrameX JSON and raw MangoHud CSV import.
 - Per-game launch profiles with bounded history and explicitly attached benchmark evidence.
+- Measured background-load advisor with exact startup/service correlation and protected system targets.
 - Startup, system services and network diagnostics in one System section.
 - Windows System Restore plus sealed Luxury recovery files.
 - Russian and English UI.
@@ -85,11 +86,11 @@ cargo clippy --locked --all-targets --manifest-path src-tauri/Cargo.toml -- -D w
 Recovery-CLI target matrix:
 
 ```powershell
-.\build.ps1 -Version 1.0.4
+.\build.ps1 -Version 1.0.5
 ```
 
 ```sh
-./build.sh 1.0.4
+./build.sh 1.0.5
 ```
 
 ## Repository layout
@@ -104,7 +105,7 @@ backend/                  Go sidecar and recovery CLI
 docs/                     decisions, architecture, changelog and review evidence
 ```
 
-See [architecture](docs/ARCHITECTURE.md), [1.0.2 tweak review](docs/TWEAK-REVIEW-1.0.2.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
+See [architecture](docs/ARCHITECTURE.md), [1.0.2 tweak review](docs/TWEAK-REVIEW-1.0.2.md), [1.0.5 advisor review](docs/BACKGROUND-ADVISOR-REVIEW-1.0.5.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
 
 ## Contributing
 

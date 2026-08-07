@@ -26,6 +26,7 @@ func windowsCapabilities() []Capability {
 		{ID: "persistent-profile", Available: true, Mode: "reversible", Detail: "registry, mouse, power and supported Ethernet values use backup/apply/read-back/rollback"},
 		{ID: "game-boost", Available: true, Mode: "session", Detail: "game stays non-elevated; system profile is restored after exit"},
 		{ID: "game-discovery", Available: true, Mode: "read-only", Detail: "Steam, Epic and fixed-drive Xbox discovery"},
+		{ID: "background-advisor", Available: true, Mode: "read-only", Detail: "bounded native process CPU/I/O sampling correlated with startup and services"},
 		{ID: "startup", Available: true, Mode: "reversible", Detail: "HKCU startup values are backed up and restored by exact type/value"},
 		{ID: "services", Available: true, Mode: "read-only", Detail: "Windows SCM inventory does not change service configuration"},
 		{ID: "self-update", Available: true, Mode: "opt-in", Detail: "GitHub Release asset is selected by OS/arch and verified against SHA256SUMS.txt"},

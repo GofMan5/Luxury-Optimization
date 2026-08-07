@@ -49,10 +49,10 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.26.2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -101,8 +101,8 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - run: chmod +x build.sh && ./build.sh 1.0.4-ci
-      - uses: actions/upload-artifact@v5
+      - run: chmod +x build.sh && ./build.sh 1.0.5-ci
+      - uses: actions/upload-artifact@v7
         with:
           name: Luxury-Optimization-recovery-cli
           path: dist/

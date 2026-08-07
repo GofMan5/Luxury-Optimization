@@ -139,6 +139,7 @@ function requestID(): string {
 
 function commandTimeout(method: string): number {
   if (method === 'gaming.scan') return 2 * 60_000
+  if (method === 'advisor.background') return 30_000
   if (method === 'updates.install' || method === 'optimization.apply' || method === 'optimization.restore' || method === 'optimization.apply_tweak' || method === 'optimization.restore_tweak' || method === 'optimization.create_checkpoint' || method === 'services.set') return 10 * 60_000
   if (method === 'network.test') return 6 * 60_000
   return 30_000

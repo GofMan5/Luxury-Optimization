@@ -11,14 +11,14 @@ The target is broad gaming-optimization coverage with fewer permanent tweaks and
 - Atomic per-game profiles, startup management, service/network inventory and benchmark comparison.
 - Manual benchmark entry plus native CapFrameX JSON and raw MangoHud CSV import.
 - Per-game launch history with explicit before/after benchmark attachments.
+- Native background-load advisor with exact startup/service correlation and protected system targets.
 - Opt-in verified updates from GitHub Releases.
 - Tauri v2 desktop UI with RU/EN, compact per-tweak actions and signed automatic update checks.
 
 ## Next vertical slices
 
-1. Background-load advisor that correlates processes, startup and services without bulk disabling.
-2. UDP/bufferbloat and storage diagnostics with stable, documented protocols.
-3. Linux desktop/TUI parity only where it reuses the existing capability contract.
+1. UDP/bufferbloat and storage diagnostics with stable, documented protocols.
+2. Linux desktop/TUI parity only where it reuses the existing capability contract.
 
 ## Excluded
 

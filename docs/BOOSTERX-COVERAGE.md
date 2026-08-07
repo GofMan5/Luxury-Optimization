@@ -19,7 +19,7 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | GameReadyX | `audit` plus profile drift and capability plan | Partial; checks stay transparent |
 | Tweak explanation | README, exact plan, NOTES and this matrix | Covered |
 | Questionnaire | Automatic audit plus deterministic Lite/Medium/Max plans | Replaced; no ambiguous bulk answers |
-| Service groups/manager | Read-only Windows SCM and Linux systemd inventory | Inspection covered; mutation rejected |
+| Service groups/manager | Complete inventory plus guarded single-service startup changes on Windows; Linux stays read-only | Critical/system targets protected; no groups or bulk mutation |
 | APPX deep removal | Outside gaming performance scope | Excluded |
 | NVIDIA panel/profile import | Driver UI remains authoritative | Private/undocumented settings excluded |
 | UDP/bufferbloat and scheduler-latency tests | TCP median/p95/jitter baseline implemented | UDP/bufferbloat pending stable protocol |
@@ -50,7 +50,7 @@ Official feature sources:
 | MMCSS `SystemResponsiveness` / `NetworkThrottlingIndex` | Benchmark first | No universal values; GPU Priority and SFIO Priority are documented as unused |
 | `Win32PrioritySeparation` | Benchmark first | Scheduler policy varies by build and workload |
 | RSS/RSC/offloads/TCP ACK recipes | Benchmark first | Protocol, NIC and throughput/latency trade-offs differ |
-| Services and scheduled tasks | Explicit advisor only | No bulk disable presets |
+| Services and scheduled tasks | Native measured process advisor with exact startup/service correlation | Single reviewed target only; no bulk disable presets or scheduled-task guesses |
 | AppX/debloat and cache deletion | Excluded from performance profile | Removing apps/data is not a reversible FPS tweak |
 | Defender, Firewall, VBS, Credential Guard and mitigations | Rejected | Security stays enabled |
 | BCD, HPET, dynamic tick and timer daemons | Rejected | Preserve Windows timer selection |

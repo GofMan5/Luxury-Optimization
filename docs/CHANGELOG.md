@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.5 - 2026-08-07
+
+### Measured background-load advisor
+
+- Added a read-only RU/EN advisor that samples native per-process CPU, I/O, working set and thread counters over a bounded 0.5–5 second interval.
+- Correlated sampled processes with exact current startup commands, Windows service PIDs and Linux systemd cgroups instead of guessing from a debloat list.
+- Suggested review only for measured current-user startup entries or manageable third-party services; system, critical and read-only services remain explicitly protected.
+- Added direct navigation to the existing single-target startup/service controls; the advisor itself performs no mutation.
+
+### Reliability
+
+- Rejected PID reuse by reading process creation identity back before resolving executable or cgroup details.
+- Capped output at the top 64 processes and eight links per process, bounded native buffers and made cancellation propagate through the sampling interval.
+- Updated Node/pnpm/upload GitHub Actions to their current Node-compatible majors; RustSec remains on its latest v2 release.
+
 ## 1.0.4 - 2026-08-07
 
 ### Per-game evidence

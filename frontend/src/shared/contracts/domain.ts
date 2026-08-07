@@ -105,6 +105,58 @@ export interface ServicesReport {
   skipped: number
 }
 
+export interface BackgroundThresholds {
+  medium_cpu_percent: number
+  high_cpu_percent: number
+  medium_io_mb_s: number
+  high_io_mb_s: number
+}
+
+export interface BackgroundStartupLink {
+  scope: string
+  name: string
+  state: string
+}
+
+export interface BackgroundServiceLink {
+  name: string
+  display_name: string
+  system: boolean
+  critical: boolean
+  manageable: boolean
+}
+
+export interface BackgroundProcess {
+  pid: number
+  name: string
+  executable?: string
+  cpu_percent: number
+  working_set_mb: number
+  read_mb_s: number
+  write_mb_s: number
+  threads: number
+  impact: 'low' | 'medium' | 'high'
+  advice: 'observe' | 'review_startup' | 'review_service' | 'protected_service'
+  startup: BackgroundStartupLink[]
+  services: BackgroundServiceLink[]
+}
+
+export interface BackgroundReport {
+  generated_at: string
+  sample_ms: number
+  logical_processors: number
+  observed_processes: number
+  measured_processes: number
+  correlated_processes: number
+  skipped_processes: number
+  observed_cpu_percent: number
+  read_mb_s: number
+  write_mb_s: number
+  thresholds: BackgroundThresholds
+  processes: BackgroundProcess[]
+  warnings?: string[]
+}
+
 export interface NetworkInterface {
   index: number
   name: string

@@ -47,12 +47,14 @@ func linuxCapabilities() []Capability {
 	steamAvailable := len(steamRoots()) > 0
 	affinity := affinityAvailable()
 	priority := canRaisePriority()
+	backgroundAdvisor := backgroundAdvisorAvailable()
 	return []Capability{
 		{ID: "persistent-windows-profile", Available: false, Mode: "skipped", Detail: "Windows registry/power/NIC settings are not applicable and will not be emulated"},
 		{ID: "feral-gamemode", Available: gameModeErr == nil, Mode: "session", Detail: availableDetail(gameModeErr == nil, "gamemoderun will wrap game launches", "gamemoderun not found; games launch directly")},
 		{ID: "process-priority", Available: priority, Mode: "session", Detail: availableDetail(priority, "negative nice is available", "negative nice needs CAP_SYS_NICE; unsupported requests are skipped")},
 		{ID: "process-affinity", Available: affinity, Mode: "session", Detail: availableDetail(affinity, "sched_setaffinity is available for explicit masks", "sched_setaffinity is unavailable and will be skipped")},
 		{ID: "steam-discovery", Available: steamAvailable, Mode: "read-only", Detail: availableDetail(steamAvailable, "Steam library roots detected", "no supported Steam root detected")},
+		{ID: "background-advisor", Available: backgroundAdvisor, Mode: "read-only", Detail: availableDetail(backgroundAdvisor, "bounded /proc CPU/I/O sampling with XDG startup and systemd cgroup correlation", "/proc process counters are unavailable; advisor sampling is skipped")},
 		{ID: "xdg-startup", Available: true, Mode: "reversible", Detail: "user .desktop entries can be atomically disabled and enabled"},
 		{ID: "systemd-services", Available: systemctlErr == nil && isSystemdBooted(), Mode: "read-only", Detail: availableDetail(systemctlErr == nil && isSystemdBooted(), "systemd service inventory is available", "systemd is not the active service manager; command returns an empty report")},
 		{ID: "self-update", Available: true, Mode: "opt-in", Detail: "GitHub Release asset is selected by OS/arch and verified against SHA256SUMS.txt"},

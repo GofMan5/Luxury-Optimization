@@ -44,6 +44,14 @@ describe('CachedBackendClient', () => {
     expect(backend.calls).toBe(3)
   })
 
+  it('never caches live background measurements', async () => {
+    const backend = new FakeBackend()
+    const client = new CachedBackendClient(backend)
+    await client.call('advisor.background', { sample_ms: 1500 })
+    await client.call('advisor.background', { sample_ms: 1500 })
+    expect(backend.calls).toBe(2)
+  })
+
   it('supports explicit prefix invalidation', async () => {
     const backend = new FakeBackend()
     const client = new CachedBackendClient(backend)

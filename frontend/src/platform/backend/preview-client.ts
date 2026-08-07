@@ -1,5 +1,5 @@
 import type { BackendClient } from './client'
-import type { Audit, BackupSummary, BenchmarkComparison, BenchmarkSet, CheckpointStatus, GameBenchmarkAttachment, GameHistoryReport, GameLaunchRecord, GamesReport, Handshake, NetworkInterface, Plan, SavedGame, SavedGames, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
+import type { Audit, BackgroundReport, BackupSummary, BenchmarkComparison, BenchmarkSet, CheckpointStatus, GameBenchmarkAttachment, GameHistoryReport, GameLaunchRecord, GamesReport, Handshake, NetworkInterface, Plan, SavedGame, SavedGames, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
 
 const hardware = {
   os: { caption: 'Windows 11 Pro', version: '24H2', build_number: '26100', architecture: '64-bit' },
@@ -11,7 +11,7 @@ const hardware = {
 
 const audit: Audit = {
   generated_at: new Date().toISOString(),
-  version: '1.0.4-preview',
+  version: '1.0.5-preview',
   hardware,
   administrator: false,
   active_power_guid: 'Balanced',
@@ -60,7 +60,7 @@ export class PreviewBackendClient implements BackendClient {
     let result: unknown
     switch (method) {
       case 'system.handshake':
-        result = { product: 'Luxury Optimization', version: '1.0.4-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
+        result = { product: 'Luxury Optimization', version: '1.0.5-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
         break
       case 'optimization.audit': result = audit; break
       case 'optimization.plan': result = previewPlan(body.profile === 'max' ? maxPlan : body.profile === 'medium' ? mediumPlan : litePlan, this.#tweakBackups); break
@@ -92,6 +92,7 @@ export class PreviewBackendClient implements BackendClient {
       case 'startup.set': result = { enabled: body.enabled }; break
       case 'services.list': result = previewServices; break
       case 'services.set': result = { changed: true, message: 'Service startup setting updated and verified.' }; break
+      case 'advisor.background': result = previewBackground(Number(body.sample_ms) || 1500); break
       case 'network.interfaces': result = previewInterfaces; break
       case 'network.test': result = { address: body.address, attempts: body.count, succeeded: body.count, failed: 0, min_ms: 8.2, median_ms: 9.1, p95_ms: 10.4, max_ms: 10.4, jitter_ms: 0.7, samples_ms: [8.2, 9.1, 10.4] }; break
       case 'benchmark.compare': result = previewBenchmark(body.before as BenchmarkSet, body.after as BenchmarkSet); break
@@ -128,7 +129,7 @@ export class PreviewBackendClient implements BackendClient {
       case 'restore.open_system': result = { changed: false, message: 'Windows System Restore opened.' }; break
       case 'cleanup.run': result = { files: 18, dirs: 2, bytes: 14_680_064, skipped: 1 }; break
       case 'updates.status': result = updateStatus(); break
-      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.4', update_ready: false }; break
+      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.5', update_ready: false }; break
       case 'updates.install': result = { changed: false, message: 'Installed version is current.' }; break
       default: throw new Error(`Preview backend does not implement ${method}`)
     }
@@ -142,12 +143,23 @@ export class PreviewBackendClient implements BackendClient {
 
 const previewStartup: StartupReport = { entries: [{ scope: 'HKCU', name: 'Steam', command: 'steam.exe -silent', state: 'present' }, { scope: 'HKCU', name: 'Discord', command: 'Update.exe --processStart Discord.exe', state: 'disabled_by_luxury_optimization' }] }
 const previewServices: ServicesReport = { services: [{ name: 'BFE', display_name: 'Base Filtering Engine', description: 'Manages firewall and Internet Protocol security policies.', dependencies: [], state: 'running', start_type: 'automatic', process_id: 1024, system: true, critical: true, manageable: false }, { name: 'mpssvc', display_name: 'Windows Defender Firewall', description: 'Helps protect the computer by preventing unauthorized network access.', dependencies: ['BFE'], state: 'running', start_type: 'automatic', process_id: 1024, system: true, critical: true, manageable: false }, { name: 'VendorAgent', display_name: 'Vendor Update Agent', description: 'Checks for optional vendor software updates.', dependencies: [], state: 'stopped', start_type: 'manual', system: false, critical: false, manageable: true }], skipped: 0 }
+function previewBackground(sampleMS: number): BackgroundReport {
+  return {
+    generated_at: new Date().toISOString(), sample_ms: sampleMS, logical_processors: 16, observed_processes: 186, measured_processes: 181, correlated_processes: 3, skipped_processes: 5, observed_cpu_percent: 8.7, read_mb_s: 3.2, write_mb_s: 0.8,
+    thresholds: { medium_cpu_percent: 1, high_cpu_percent: 5, medium_io_mb_s: 2, high_io_mb_s: 10 },
+    processes: [
+      { pid: 4240, name: 'Discord.exe', executable: 'C:\\Users\\Preview\\AppData\\Local\\Discord\\Discord.exe', cpu_percent: 4.8, working_set_mb: 612, read_mb_s: 2.7, write_mb_s: 0.4, threads: 42, impact: 'medium', advice: 'review_startup', startup: [{ scope: 'HKCU', name: 'Discord', state: 'present' }], services: [] },
+      { pid: 5150, name: 'VendorAgent.exe', executable: 'C:\\Program Files\\Vendor\\VendorAgent.exe', cpu_percent: 1.4, working_set_mb: 188, read_mb_s: 0.5, write_mb_s: 0.4, threads: 18, impact: 'medium', advice: 'review_service', startup: [], services: [{ name: 'VendorAgent', display_name: 'Vendor Update Agent', system: false, critical: false, manageable: true }] },
+      { pid: 1024, name: 'svchost.exe', executable: 'C:\\Windows\\System32\\svchost.exe', cpu_percent: 0.3, working_set_mb: 94, read_mb_s: 0, write_mb_s: 0, threads: 16, impact: 'low', advice: 'protected_service', startup: [], services: [{ name: 'BFE', display_name: 'Base Filtering Engine', system: true, critical: true, manageable: false }] },
+    ],
+  }
+}
 const previewInterfaces: NetworkInterface[] = [{ index: 4, name: 'Ethernet', mtu: 1500, flags: 'up|broadcast|multicast', addresses: ['192.168.1.20/24'] }]
 const previewGames: GamesReport = { games: [{ source: 'Steam', id: '730', name: 'Example Game', install_dir: 'C:\\Games\\Example Game', executables: ['C:\\Games\\Example Game\\game.exe'] }] }
 const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'lite', status: 'applied', restorable: true }]
 const previewSystemPoints: SystemRestorePoint[] = [{ sequence_number: 42, description: 'Before driver update', created_at: new Date(Date.now() - 86_400_000).toISOString(), restore_point_type: 0 }]
 function updateStatus(): UpdateStatus {
-  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.4-preview', update_ready: false }
+  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.5-preview', update_ready: false }
 }
 
 function previewBenchmark(before: BenchmarkSet, after: BenchmarkSet): BenchmarkComparison {

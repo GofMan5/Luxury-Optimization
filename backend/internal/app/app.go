@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/GofMan5/Luxury-Optimization/internal/features/advisor"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/benchmark"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/cleanup"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/gaming"
@@ -38,6 +39,7 @@ var AllowedMethods = []string{
 	"services.set",
 	"network.interfaces",
 	"network.test",
+	"advisor.background",
 	"benchmark.compare",
 	"gaming.scan",
 	"gaming.saved",
@@ -68,6 +70,8 @@ func (application *Application) Handle(ctx context.Context, method string, paylo
 		return services.Handle(ctx, application.optimizer, method, payload)
 	case "network.interfaces", "network.test":
 		return network.Handle(ctx, application.optimizer, method, payload)
+	case "advisor.background":
+		return advisor.Handle(ctx, application.optimizer, method, payload)
 	case "benchmark.compare":
 		return benchmark.Handle(ctx, application.optimizer, method, payload)
 	case "gaming.scan", "gaming.saved", "gaming.save", "gaming.remove", "gaming.launch", "gaming.history", "gaming.attach_benchmark":
