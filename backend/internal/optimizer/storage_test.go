@@ -142,7 +142,10 @@ func TestStorageChildrenAreBoundedAndPartitioned(t *testing.T) {
 }
 
 func TestStorageDeleteRequiresPreviewAndRevalidatesTarget(t *testing.T) {
-	root := t.TempDir()
+	root, err := canonicalStorageScanRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(root, "large.bin")
 	if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
 		t.Fatal(err)
@@ -175,7 +178,10 @@ func TestStorageDeleteRequiresPreviewAndRevalidatesTarget(t *testing.T) {
 }
 
 func TestStorageDeleteConfirmationIsSingleUseAndRecycles(t *testing.T) {
-	root := t.TempDir()
+	root, err := canonicalStorageScanRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(root, "remove.me")
 	if err := os.WriteFile(path, []byte("temporary"), 0o600); err != nil {
 		t.Fatal(err)
