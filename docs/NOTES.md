@@ -22,6 +22,7 @@ Unsupported settings are capabilities, not errors: report them, mark them `skipp
 | Temporary game boost | Keeps aggressive state scoped to a game session | Non-admin game, session lock and automatic Windows restore |
 | Explicit process priority/affinity | Useful in measured contention cases | Per-game only, no realtime, capability/read-back checks |
 | Game discovery and saved profiles | Removes setup friction | Read-only manifests, bounded scan, canonical executable revalidation |
+| Per-game launch/evidence history | Keeps measured decisions tied to the workload that produced them | Separate bounded atomic file; successful helper starts only; comparison recomputed on load |
 | Startup manager | Reduces deliberate background load | Explicit user entry only; system scope remains read-only |
 | Service inventory | Makes background state visible | Read-only on Windows SCM and systemd |
 | TCP and benchmark tools | Produce comparable evidence | Bounded timeouts, at least three runs, median/MAD threshold |

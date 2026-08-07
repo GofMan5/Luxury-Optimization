@@ -34,8 +34,11 @@ type SaveGameRequest struct {
 }
 
 type GameLaunchResult struct {
-	PID  int    `json:"pid"`
-	Name string `json:"name"`
+	PID       int        `json:"pid"`
+	Name      string     `json:"name"`
+	LaunchID  string     `json:"launch_id,omitempty"`
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	Warning   string     `json:"warning,omitempty"`
 }
 
 type SystemRestorePoint struct {
@@ -192,7 +195,17 @@ func (s *Service) LaunchGame(id string) (GameLaunchResult, error) {
 		args = append(args, "--")
 		args = append(args, game.Args...)
 		pid, err := launchRecoveryCLI(args)
-		return GameLaunchResult{PID: pid, Name: game.Name}, err
+		result := GameLaunchResult{PID: pid, Name: game.Name}
+		if err != nil {
+			return result, err
+		}
+		record, historyErr := recordGameLaunch(game, pid)
+		if historyErr != nil {
+			result.Warning = "Игра запущена, но история запуска не сохранена: " + displayText(historyErr.Error())
+		} else {
+			result.LaunchID, result.StartedAt = record.ID, &record.StartedAt
+		}
+		return result, nil
 	}
 	return GameLaunchResult{}, fmt.Errorf("игровой профиль %q не найден", id)
 }

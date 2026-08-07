@@ -214,6 +214,13 @@ fn allowed_method(method: &str) -> bool {
             | "network.interfaces"
             | "network.test"
             | "benchmark.compare"
+            | "gaming.scan"
+            | "gaming.saved"
+            | "gaming.save"
+            | "gaming.remove"
+            | "gaming.launch"
+            | "gaming.history"
+            | "gaming.attach_benchmark"
             | "cleanup.run"
             | "updates.status"
     )
@@ -368,6 +375,7 @@ mod tests {
             "optimization.restore_tweak",
             "services.list",
             "benchmark.compare",
+            "gaming.attach_benchmark",
             "updates.status",
         ] {
             let frame = format!(

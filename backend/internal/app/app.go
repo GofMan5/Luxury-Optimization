@@ -6,6 +6,7 @@ import (
 
 	"github.com/GofMan5/Luxury-Optimization/internal/features/benchmark"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/cleanup"
+	"github.com/GofMan5/Luxury-Optimization/internal/features/gaming"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/network"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/optimization"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/services"
@@ -38,6 +39,13 @@ var AllowedMethods = []string{
 	"network.interfaces",
 	"network.test",
 	"benchmark.compare",
+	"gaming.scan",
+	"gaming.saved",
+	"gaming.save",
+	"gaming.remove",
+	"gaming.launch",
+	"gaming.history",
+	"gaming.attach_benchmark",
 	"cleanup.run",
 	"updates.status",
 }
@@ -62,6 +70,8 @@ func (application *Application) Handle(ctx context.Context, method string, paylo
 		return network.Handle(ctx, application.optimizer, method, payload)
 	case "benchmark.compare":
 		return benchmark.Handle(ctx, application.optimizer, method, payload)
+	case "gaming.scan", "gaming.saved", "gaming.save", "gaming.remove", "gaming.launch", "gaming.history", "gaming.attach_benchmark":
+		return gaming.Handle(ctx, application.optimizer, method, payload)
 	case "cleanup.run":
 		return cleanup.Handle(ctx, application.optimizer, method, payload)
 	case "updates.status":

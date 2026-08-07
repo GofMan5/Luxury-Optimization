@@ -4,7 +4,7 @@ Luxury Optimization is a Tauri v2 desktop application with a React frontend and 
 
 ## Frontend
 
-`frontend/src` is organized by user-facing slices: overview, tweaks, system, restore and updates. Shared contracts describe only JSON data crossing the sidecar boundary. A small TTL cache deduplicates reads and invalidates the affected prefixes after mutations.
+`frontend/src` is organized by user-facing slices: overview, tweaks, games, benchmarks, system, restore and updates. Shared contracts describe only JSON data crossing the sidecar boundary. A small TTL cache deduplicates reads and invalidates the affected prefixes after mutations.
 
 The Tauri host in `frontend/src-tauri` owns the sidecar process. Rust validates frame size, request IDs and an exact method allowlist before a command reaches Go. The sidecar has no shell passthrough.
 
@@ -22,6 +22,8 @@ resolve exact target → capture state → seal backup → journal intent → mu
 Manual tweaks receive one backup ID each. Registry targets are allowlisted, Ethernet IDs include the adapter identity, mouse SPI rollback changes only the selected field, and a power tweak clones the active plan rather than editing it. Power backups must be unwound newest first.
 
 Profiles are strict nested tiers: Lite has six low-risk registry targets, Medium adds capture/input plus 11 reviewed processor policies, and Max adds the remaining native processor/storage catalog, PCIe/USB and physical Ethernet. The legacy `recommended` and `maximum` IDs remain read-compatible for old backups and saved games.
+
+Saved-game compatibility stays in the legacy `games.json` v1 location and mutex. Launch/evidence history is isolated in `game-history.json`: bounded records, atomic replacement, protected user permissions, recomputed benchmark verdicts and no executable data beyond the saved profile ID.
 
 On Linux, Windows registry, power and NIC mutations are unavailable. Audit, GameMode/process sessions, XDG startup and read-only systemd inventory use native capabilities and skip unsupported behavior without partial mutation.
 

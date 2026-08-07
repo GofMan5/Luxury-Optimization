@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-version="${1:-1.0.3}"
+version="${1:-1.0.4}"
 if ! printf '%s\n' "$version" | grep -Eq '^1\.0\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
   printf '%s\n' 'version must stay in the 1.0.x release line' >&2
   exit 2

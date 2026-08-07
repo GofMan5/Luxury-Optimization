@@ -151,6 +151,9 @@ func runSavedGame(args []string) error {
 			if err := validateSavedGame(game, true); err != nil {
 				return err
 			}
+			if _, historyErr := recordGameLaunch(game, os.Getpid()); historyErr != nil {
+				fmt.Fprintln(os.Stderr, "Предупреждение: история запуска:", displayText(historyErr.Error()))
+			}
 			return runBoostSession(game.Path, game.Profile, game.Priority, uintptr(game.Affinity), append(append([]string(nil), game.Args...), set.Args()...))
 		}
 	}

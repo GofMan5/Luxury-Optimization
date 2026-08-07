@@ -1,5 +1,5 @@
 import type { BackendClient } from './client'
-import type { Audit, BackupSummary, BenchmarkComparison, BenchmarkSet, CheckpointStatus, Handshake, NetworkInterface, Plan, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
+import type { Audit, BackupSummary, BenchmarkComparison, BenchmarkSet, CheckpointStatus, GameBenchmarkAttachment, GameHistoryReport, GameLaunchRecord, GamesReport, Handshake, NetworkInterface, Plan, SavedGame, SavedGames, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
 
 const hardware = {
   os: { caption: 'Windows 11 Pro', version: '24H2', build_number: '26100', architecture: '64-bit' },
@@ -11,7 +11,7 @@ const hardware = {
 
 const audit: Audit = {
   generated_at: new Date().toISOString(),
-  version: '1.0.3-preview',
+  version: '1.0.4-preview',
   hardware,
   administrator: false,
   active_power_guid: 'Balanced',
@@ -50,6 +50,9 @@ const maxPlan: Plan = { profile: { id: 'max', name: 'Max', description: 'All sup
 export class PreviewBackendClient implements BackendClient {
   #checkpoints = new Set<string>()
   #tweakBackups = new Set<string>()
+  #games: SavedGame[] = [{ id: previewGameID('C:\\Games\\Example Game\\game.exe'), name: 'Example Game', path: 'C:\\Games\\Example Game\\game.exe', profile: 'medium', priority: 'normal' }]
+  #launches: GameLaunchRecord[] = []
+  #benchmarks: GameBenchmarkAttachment[] = []
 
   async call<T>(method: string, payload?: unknown, signal?: AbortSignal): Promise<T> {
     await pause(90, signal)
@@ -57,7 +60,7 @@ export class PreviewBackendClient implements BackendClient {
     let result: unknown
     switch (method) {
       case 'system.handshake':
-        result = { product: 'Luxury Optimization', version: '1.0.3-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
+        result = { product: 'Luxury Optimization', version: '1.0.4-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
         break
       case 'optimization.audit': result = audit; break
       case 'optimization.plan': result = previewPlan(body.profile === 'max' ? maxPlan : body.profile === 'medium' ? mediumPlan : litePlan, this.#tweakBackups); break
@@ -92,12 +95,40 @@ export class PreviewBackendClient implements BackendClient {
       case 'network.interfaces': result = previewInterfaces; break
       case 'network.test': result = { address: body.address, attempts: body.count, succeeded: body.count, failed: 0, min_ms: 8.2, median_ms: 9.1, p95_ms: 10.4, max_ms: 10.4, jitter_ms: 0.7, samples_ms: [8.2, 9.1, 10.4] }; break
       case 'benchmark.compare': result = previewBenchmark(body.before as BenchmarkSet, body.after as BenchmarkSet); break
+      case 'gaming.scan': result = previewGames; break
+      case 'gaming.saved': result = { version: 1, games: this.#games } satisfies SavedGames; break
+      case 'gaming.save': {
+        const path = String(body.path ?? '')
+        const game: SavedGame = { id: previewGameID(path), name: String(body.name || path.split(/[\\/]/).pop() || 'Game'), path, profile: (body.profile || 'medium') as SavedGame['profile'], priority: (body.priority || 'normal') as SavedGame['priority'], ...(body.affinity ? { affinity: Number.parseInt(String(body.affinity).replace(/^0x/i, ''), 16) } : {}), ...(Array.isArray(body.args) ? { args: body.args.map(String) } : {}) }
+        this.#games = [...this.#games.filter((item) => item.id !== game.id), game]
+        result = game
+        break
+      }
+      case 'gaming.remove': this.#games = this.#games.filter((game) => game.id !== body.id); result = { changed: true, message: 'Game profile removed.' }; break
+      case 'gaming.launch': {
+        const game = this.#games.find((item) => item.id === body.id)
+        if (!game) throw new Error('Game profile not found')
+        const started = new Date().toISOString()
+        const launch: GameLaunchRecord = { id: previewHistoryID(this.#launches.length + 1), game_id: game.id, game_name: game.name, started_at: started, launcher_pid: 4242, profile: game.profile, priority: game.priority, ...(game.affinity ? { affinity: game.affinity } : {}) }
+        this.#launches = [launch, ...this.#launches]
+        result = { pid: launch.launcher_pid, name: game.name, launch_id: launch.id, started_at: started }
+        break
+      }
+      case 'gaming.history': result = { game_id: String(body.id), launches: this.#launches.filter((item) => item.game_id === body.id), benchmarks: this.#benchmarks.filter((item) => item.game_id === body.id) } satisfies GameHistoryReport; break
+      case 'gaming.attach_benchmark': {
+        const before = body.before as BenchmarkSet
+        const after = body.after as BenchmarkSet
+        const attachment: GameBenchmarkAttachment = { id: previewHistoryID(1000 + this.#benchmarks.length), game_id: String(body.game_id), created_at: new Date().toISOString(), before, after, comparison: previewBenchmark(before, after) }
+        this.#benchmarks = [attachment, ...this.#benchmarks]
+        result = attachment
+        break
+      }
       case 'backups.list': result = previewBackups; break
       case 'restore.system_points': result = previewSystemPoints; break
       case 'restore.open_system': result = { changed: false, message: 'Windows System Restore opened.' }; break
       case 'cleanup.run': result = { files: 18, dirs: 2, bytes: 14_680_064, skipped: 1 }; break
       case 'updates.status': result = updateStatus(); break
-      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.3', update_ready: false }; break
+      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.4', update_ready: false }; break
       case 'updates.install': result = { changed: false, message: 'Installed version is current.' }; break
       default: throw new Error(`Preview backend does not implement ${method}`)
     }
@@ -112,10 +143,11 @@ export class PreviewBackendClient implements BackendClient {
 const previewStartup: StartupReport = { entries: [{ scope: 'HKCU', name: 'Steam', command: 'steam.exe -silent', state: 'present' }, { scope: 'HKCU', name: 'Discord', command: 'Update.exe --processStart Discord.exe', state: 'disabled_by_luxury_optimization' }] }
 const previewServices: ServicesReport = { services: [{ name: 'BFE', display_name: 'Base Filtering Engine', description: 'Manages firewall and Internet Protocol security policies.', dependencies: [], state: 'running', start_type: 'automatic', process_id: 1024, system: true, critical: true, manageable: false }, { name: 'mpssvc', display_name: 'Windows Defender Firewall', description: 'Helps protect the computer by preventing unauthorized network access.', dependencies: ['BFE'], state: 'running', start_type: 'automatic', process_id: 1024, system: true, critical: true, manageable: false }, { name: 'VendorAgent', display_name: 'Vendor Update Agent', description: 'Checks for optional vendor software updates.', dependencies: [], state: 'stopped', start_type: 'manual', system: false, critical: false, manageable: true }], skipped: 0 }
 const previewInterfaces: NetworkInterface[] = [{ index: 4, name: 'Ethernet', mtu: 1500, flags: 'up|broadcast|multicast', addresses: ['192.168.1.20/24'] }]
+const previewGames: GamesReport = { games: [{ source: 'Steam', id: '730', name: 'Example Game', install_dir: 'C:\\Games\\Example Game', executables: ['C:\\Games\\Example Game\\game.exe'] }] }
 const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'lite', status: 'applied', restorable: true }]
 const previewSystemPoints: SystemRestorePoint[] = [{ sequence_number: 42, description: 'Before driver update', created_at: new Date(Date.now() - 86_400_000).toISOString(), restore_point_type: 0 }]
 function updateStatus(): UpdateStatus {
-  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.3-preview', update_ready: false }
+  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.4-preview', update_ready: false }
 }
 
 function previewBenchmark(before: BenchmarkSet, after: BenchmarkSet): BenchmarkComparison {
@@ -132,6 +164,16 @@ function previewBenchmark(before: BenchmarkSet, after: BenchmarkSet): BenchmarkC
 function previewCheckpoint(profile: string, ready = false): CheckpointStatus {
   const created = new Date().toISOString()
   return { ready, profile, created_at: created, expires_at: new Date(Date.now() + 86_400_000).toISOString() }
+}
+
+function previewGameID(path: string): string {
+  let hash = 2166136261
+  for (const value of path.toLowerCase()) hash = Math.imul(hash ^ value.charCodeAt(0), 16777619)
+  return Math.abs(hash >>> 0).toString(16).padStart(12, '0').slice(-12)
+}
+
+function previewHistoryID(value: number): string {
+  return value.toString(16).padStart(16, '0')
 }
 
 function previewTweak(id: string, category: string, name: string, current: string, desired: string, changed: boolean, risk: 'low' | 'medium' | 'high' = changed ? 'medium' : 'low') {

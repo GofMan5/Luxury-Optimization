@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.4 - 2026-08-07
+
+### Per-game evidence
+
+- Added a dedicated RU/EN Games screen for discovery, explicit saved profiles, bounded launches and history.
+- Recorded successful helper launches without elevating the game or weakening automatic session rollback.
+- Added explicit attachment of validated before/after benchmark sets and noise-aware verdicts to one saved game.
+- Stored history in a separate bounded, atomic user file so legacy `games.json`, its version, location and mutex remain unchanged.
+- Kept the newest 24 launches and eight benchmark comparisons per game, with global and file-size limits.
+
 ## 1.0.3 - 2026-08-07
 
 ### Measured before/after workflow

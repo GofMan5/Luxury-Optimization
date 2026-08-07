@@ -12,7 +12,7 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | Restore center | Admin-only verified inventory plus exact `restore --id` | Covered in CLI |
 | Basic and advanced system tweaks | 100+ native processor, storage, PCIe, USB, gaming and UI actions with capability checks | Curated |
 | Power settings | Separate temporary AC plan, native High Performance defaults, 5–100% CPU and exact read-back | Covered |
-| GameModeX / game profiles | `boost`, `games add/list/run/remove` | Covered without daemon |
+| GameModeX / game profiles | Desktop discovery/saved profiles, bounded launch history and `boost` | Covered without daemon |
 | ProcessX priority and affinity | Live process API, explicit per-game values, read-back | Covered without IFEO |
 | Steam/Epic/Xbox discovery | `games scan`; Linux supports Steam native/Flatpak | Covered by platform |
 | Startup manager | HKCU list/disable/enable with exact backup | Covered; HKLM remains read-only |
@@ -23,7 +23,7 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | APPX deep removal | Outside gaming performance scope | Excluded |
 | NVIDIA panel/profile import | Driver UI remains authoritative | Private/undocumented settings excluded |
 | UDP/bufferbloat and scheduler-latency tests | TCP median/p95/jitter baseline implemented | UDP/bufferbloat pending stable protocol |
-| Before/after comparison | Desktop manual entry plus CapFrameX/raw MangoHud import; median FPS, 1% low, p95 frametime and MAD noise verdict | Covered |
+| Before/after comparison | Desktop manual/import flow plus explicit per-game evidence attachment and MAD noise verdict | Covered |
 | Device Control / MSI / IRQ | Hardware-specific and restart-sensitive | Benchmark first |
 | Fixes unrelated to optimization | Outside product scope | Excluded |
 | AI-generated/imported arbitrary tweaks | No trusted rollback contract | Excluded |

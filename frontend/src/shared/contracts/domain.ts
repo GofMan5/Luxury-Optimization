@@ -154,6 +154,68 @@ export interface BenchmarkComparison {
   verdict: 'measurably_improved' | 'measurably_regressed' | 'mixed_result' | 'within_run_to_run_variance'
 }
 
+export interface GameInstall {
+  source: string
+  id: string
+  name: string
+  install_dir: string
+  executables?: string[]
+}
+
+export interface GamesReport {
+  games: GameInstall[]
+  warnings?: string[]
+}
+
+export interface SavedGame {
+  id: string
+  name: string
+  path: string
+  profile: 'lite' | 'medium' | 'max' | 'recommended' | 'maximum'
+  priority: 'normal' | 'above-normal' | 'high'
+  affinity?: number
+  args?: string[]
+}
+
+export interface SavedGames {
+  version: number
+  games: SavedGame[]
+}
+
+export interface GameLaunchResult {
+  pid: number
+  name: string
+  launch_id?: string
+  started_at?: string
+  warning?: string
+}
+
+export interface GameLaunchRecord {
+  id: string
+  game_id: string
+  game_name: string
+  started_at: string
+  launcher_pid: number
+  profile: string
+  priority: string
+  affinity?: number
+}
+
+export interface GameBenchmarkAttachment {
+  id: string
+  game_id: string
+  created_at: string
+  before: BenchmarkSet
+  after: BenchmarkSet
+  comparison: BenchmarkComparison
+}
+
+export interface GameHistoryReport {
+  game_id: string
+  launches: GameLaunchRecord[]
+  benchmarks: GameBenchmarkAttachment[]
+}
+
 export interface BackupSummary {
   id: string
   created_at: string

@@ -34,6 +34,16 @@ describe('CachedBackendClient', () => {
     expect(backend.calls).toBe(3)
   })
 
+  it('refreshes per-game history after a launch', async () => {
+    const backend = new FakeBackend()
+    const client = new CachedBackendClient(backend)
+    await client.call('gaming.history', { id: '0123456789ab' })
+    await client.call('gaming.history', { id: '0123456789ab' })
+    await client.call('gaming.launch', { id: '0123456789ab' })
+    await client.call('gaming.history', { id: '0123456789ab' })
+    expect(backend.calls).toBe(3)
+  })
+
   it('supports explicit prefix invalidation', async () => {
     const backend = new FakeBackend()
     const client = new CachedBackendClient(backend)
