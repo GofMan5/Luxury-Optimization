@@ -107,7 +107,7 @@ backend/                  Go sidecar and recovery CLI
 docs/                     decisions, architecture, changelog and review evidence
 ```
 
-See [architecture](docs/ARCHITECTURE.md), [1.0.2 tweak review](docs/TWEAK-REVIEW-1.0.2.md), [1.0.5 advisor review](docs/BACKGROUND-ADVISOR-REVIEW-1.0.5.md), [1.0.6 diagnostics review](docs/DIAGNOSTICS-PROTOCOL-1.0.6.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
+See [architecture](docs/ARCHITECTURE.md), [1.0.6 tweak review](docs/TWEAK-REVIEW-1.0.6.md), [1.0.5 advisor review](docs/BACKGROUND-ADVISOR-REVIEW-1.0.5.md), [1.0.6 diagnostics review](docs/DIAGNOSTICS-PROTOCOL-1.0.6.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
 
 ## Contributing
 

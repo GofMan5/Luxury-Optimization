@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.6 - 2026-08-07
+## 1.0.6 - 2026-08-08
 
 ### Network quality diagnostics
 
@@ -20,6 +20,7 @@
 ### Compatibility and protocol
 
 - Kept Lite/Medium/Max targets, legacy backup/state names and all persistent mutation behavior unchanged.
+- Reviewed the final machine-specific profiles at 6 / 23 / 126 actions: Lite remains low-risk only; Medium remains limited to reviewed CPU policies; Max adds capability-gated Wi-Fi Maximum Performance, the remaining advertised Ethernet energy controls and session-only game-process EcoQoS/Power Throttling disablement with native read-back.
 - Added `network.udp`, `network.bufferbloat`, `storage.volumes`, `storage.test`, bounded `storage.scan.*` and two-phase `storage.delete.*` methods to the strict Go/Rust sidecar allowlists.
 - Documented exact limits, algorithms, interpretation and exclusions in [the 1.0.6 diagnostics protocol review](DIAGNOSTICS-PROTOCOL-1.0.6.md).
 
