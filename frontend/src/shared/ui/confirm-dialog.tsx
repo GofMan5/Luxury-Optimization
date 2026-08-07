@@ -9,11 +9,12 @@ interface ConfirmDialogProps {
   confirmLabel: string
   busy?: boolean
   danger?: boolean
+	confirmDisabled?: boolean
   onCancel: () => void
   onConfirm: () => void
 }
 
-export function ConfirmDialog({ open, title, description, confirmLabel, busy = false, danger = false, onCancel, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, description, confirmLabel, busy = false, danger = false, confirmDisabled = false, onCancel, onConfirm }: ConfirmDialogProps) {
   const { language } = useLanguage()
   const cancelRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -27,7 +28,7 @@ export function ConfirmDialog({ open, title, description, confirmLabel, busy = f
         <div id="dialog-description" className="dialog__description">{description}</div>
         <div className="dialog__actions">
           <Button ref={cancelRef} variant="quiet" disabled={busy} onClick={onCancel}>{language === 'ru' ? 'Отмена' : 'Cancel'}</Button>
-          <Button variant={danger ? 'danger' : 'primary'} disabled={busy} onClick={onConfirm}>{busy ? (language === 'ru' ? 'Выполняется…' : 'Working…') : confirmLabel}</Button>
+          <Button variant={danger ? 'danger' : 'primary'} disabled={busy || confirmDisabled} onClick={onConfirm}>{busy ? (language === 'ru' ? 'Выполняется…' : 'Working…') : confirmLabel}</Button>
         </div>
       </section>
     </div>

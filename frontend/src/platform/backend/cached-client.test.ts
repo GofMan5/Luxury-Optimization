@@ -52,6 +52,20 @@ describe('CachedBackendClient', () => {
     expect(backend.calls).toBe(2)
   })
 
+  it('caches volume inventory but never loaded diagnostics', async () => {
+    const backend = new FakeBackend()
+    const client = new CachedBackendClient(backend)
+    await client.call('storage.volumes', {})
+    await client.call('storage.volumes', {})
+    await client.call('network.bufferbloat', { duration_ms: 2000 })
+    await client.call('network.bufferbloat', { duration_ms: 2000 })
+    await client.call('storage.test', { path: 'C:\\', size_mb: 8, block_kb: 64 })
+    await client.call('storage.test', { path: 'C:\\', size_mb: 8, block_kb: 64 })
+    await client.call('storage.scan.status', { scan_id: 'x' })
+    await client.call('storage.scan.status', { scan_id: 'x' })
+    expect(backend.calls).toBe(7)
+  })
+
   it('supports explicit prefix invalidation', async () => {
     const backend = new FakeBackend()
     const client = new CachedBackendClient(backend)

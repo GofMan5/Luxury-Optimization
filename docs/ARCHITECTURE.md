@@ -27,6 +27,10 @@ Saved-game compatibility stays in the legacy `games.json` v1 location and mutex.
 
 The background advisor takes two bounded native process snapshots. Windows uses `NtQuerySystemInformation`; Linux reads bounded `/proc` counters. CPU is normalized to total logical capacity, I/O is a byte-rate delta and memory is informational only. Startup commands, service PIDs and systemd cgroups are correlated after process creation identity is read back; no advisor endpoint mutates state.
 
+Network diagnostics use a fixed RFC 1035 query for UDP round-trip and compare idle TCP handshakes with separate bounded HTTPS download/upload phases. Load URLs are backend constants, redirects stay on the approved host and only one heavy network/storage probe can run at once. Storage diagnostics use native volume metadata plus one size-bounded local temporary file with sync, SHA-256 read-back and mandatory deletion; immediate read speed is labelled buffered.
+
+The space analyzer runs in a separate Tauri window over the shared sidecar. A bounded worker pool enumerates directory metadata while one coordinator produces deterministic aggregates; reports remain capped at 256 children, 100 files, 64 extensions, 10 million entries and 15 minutes. Up to 24 visited-folder reports are cached for five minutes, while explicit refresh and post-delete refresh read the filesystem again. Deletion is a two-call capability: an opaque scan node produces a short-lived nonce, confirmation revalidates file identity/type/path, then the platform Trash primitive runs without a permanent-delete fallback. System-managed paths, roots, synthetic nodes and links never receive a deletion capability.
+
 On Linux, Windows registry, power and NIC mutations are unavailable. Audit, GameMode/process sessions, XDG startup and read-only systemd inventory use native capabilities and skip unsupported behavior without partial mutation.
 
 ## Recovery boundary

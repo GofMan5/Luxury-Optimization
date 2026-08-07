@@ -22,7 +22,9 @@ Research baseline: official BoosterX website and PRO matrix, public version 2.2.
 | Service groups/manager | Complete inventory plus guarded single-service startup changes on Windows; Linux stays read-only | Critical/system targets protected; no groups or bulk mutation |
 | APPX deep removal | Outside gaming performance scope | Excluded |
 | NVIDIA panel/profile import | Driver UI remains authoritative | Private/undocumented settings excluded |
-| UDP/bufferbloat and scheduler-latency tests | TCP median/p95/jitter baseline implemented | UDP/bufferbloat pending stable protocol |
+| UDP/bufferbloat and scheduler-latency tests | RFC 1035 UDP loss/latency plus separate bounded download/upload loaded-latency phases | Covered with documented protocol; no timer/scheduler daemon |
+| Storage benchmark/diagnostics | Native volume inventory, bounded write/sync/read/SHA-256 path probe and standalone treemap analyzer | Covered without raw-disk access; main UI remains usable during scan |
+| Disk-space cleanup | Opaque-ID file/folder review with mandatory preview and Recycle Bin confirmation | Covered with system-path, reparse and changed-target protection |
 | Before/after comparison | Desktop manual/import flow plus explicit per-game evidence attachment and MAD noise verdict | Covered |
 | Device Control / MSI / IRQ | Hardware-specific and restart-sensitive | Benchmark first |
 | Fixes unrelated to optimization | Outside product scope | Excluded |

@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.0.6 - 2026-08-07
+
+### Network quality diagnostics
+
+- Added bounded RFC 1035 UDP/DNS round-trip measurement with matching transaction validation, loss, median, p95 and jitter.
+- Added idle-versus-loaded latency diagnostics for separate HTTPS download and upload phases, each capped at 128 MiB and reported independently when unavailable.
+- Fixed load endpoints inside the backend instead of accepting arbitrary WebView URLs; redirects stay on the approved HTTPS host.
+
+### Storage diagnostics
+
+- Added native local-volume inventory and an opt-in filesystem path probe with free-space headroom, bounded temporary size, write/sync/read metrics and SHA-256 read-back.
+- Guaranteed temporary-file cleanup on success, cancellation and error, and serialized heavy diagnostics to prevent concurrent disk/network load.
+- Added a dedicated RU/EN Storage tab plus a custom standalone analyzer window, so the main application remains usable while metadata is read.
+- Added bounded parallel directory traversal, live progress/cancellation, treemap, folder/file/extension views and a five-minute cache for visited folders; explicit Rescan always bypasses the cache.
+- Added opaque drill-down and deletion IDs. Files and folders move to the system Recycle Bin/Trash only after a fresh preview and confirmation; large folders require typing the exact name.
+- Protected roots, parent/synthetic nodes, links/reparse points, changed identities, OS-managed paths and the running application tree from deletion. A successful move invalidates affected cache entries and rescans only the current folder.
+
+### Compatibility and protocol
+
+- Kept Lite/Medium/Max targets, legacy backup/state names and all persistent mutation behavior unchanged.
+- Added `network.udp`, `network.bufferbloat`, `storage.volumes`, `storage.test`, bounded `storage.scan.*` and two-phase `storage.delete.*` methods to the strict Go/Rust sidecar allowlists.
+- Documented exact limits, algorithms, interpretation and exclusions in [the 1.0.6 diagnostics protocol review](DIAGNOSTICS-PROTOCOL-1.0.6.md).
+
 ## 1.0.5 - 2026-08-07
 
 ### Measured background-load advisor

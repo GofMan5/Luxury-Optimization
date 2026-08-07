@@ -22,7 +22,8 @@ No debloat scripts, timer daemons, memory cleaners, private GPU keys or mass ser
 - Built-in before/after benchmark comparison with CapFrameX JSON and raw MangoHud CSV import.
 - Per-game launch profiles with bounded history and explicitly attached benchmark evidence.
 - Measured background-load advisor with exact startup/service correlation and protected system targets.
-- Startup, system services and network diagnostics in one System section.
+- Startup, system services, RFC 1035 UDP/bufferbloat and verified storage-path diagnostics in one System section.
+- Standalone storage analyzer with bounded parallel scanning, cached drill-down, treemap and confirmed Recycle Bin deletion while the main UI stays usable.
 - Windows System Restore plus sealed Luxury recovery files.
 - Russian and English UI.
 - Signed in-app updates from GitHub Releases.
@@ -50,6 +51,7 @@ Every preset requires a recent matching local Luxury checkpoint. Unsupported set
 | Session optimization | Non-elevated game process with automatic restore | GameMode, nice and affinity when supported |
 | Startup | Reversible current-user entries | Reversible user XDG entries |
 | Services | Full inventory; critical services protected | Read-only systemd inventory |
+| Diagnostics | TCP/UDP, loaded latency, native volumes and verified temporary path probe | Same protocol with native mount/statfs inventory |
 | Recovery | Windows restore points and sealed per-operation backups | No fake Windows recovery surface |
 
 The release workflow currently builds x86-64 Windows and Linux desktop bundles. The Go recovery CLI also cross-builds for Windows `amd64`, `arm64`, `386` and Linux `amd64`, `arm64`.
@@ -86,11 +88,11 @@ cargo clippy --locked --all-targets --manifest-path src-tauri/Cargo.toml -- -D w
 Recovery-CLI target matrix:
 
 ```powershell
-.\build.ps1 -Version 1.0.5
+.\build.ps1 -Version 1.0.6
 ```
 
 ```sh
-./build.sh 1.0.5
+./build.sh 1.0.6
 ```
 
 ## Repository layout
@@ -105,7 +107,7 @@ backend/                  Go sidecar and recovery CLI
 docs/                     decisions, architecture, changelog and review evidence
 ```
 
-See [architecture](docs/ARCHITECTURE.md), [1.0.2 tweak review](docs/TWEAK-REVIEW-1.0.2.md), [1.0.5 advisor review](docs/BACKGROUND-ADVISOR-REVIEW-1.0.5.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
+See [architecture](docs/ARCHITECTURE.md), [1.0.2 tweak review](docs/TWEAK-REVIEW-1.0.2.md), [1.0.5 advisor review](docs/BACKGROUND-ADVISOR-REVIEW-1.0.5.md), [1.0.6 diagnostics review](docs/DIAGNOSTICS-PROTOCOL-1.0.6.md), [tweak decisions](docs/NOTES.md), [BoosterX coverage](docs/BOOSTERX-COVERAGE.md), [changelog](docs/CHANGELOG.md) and [release policy](docs/RELEASES.md).
 
 ## Contributing
 

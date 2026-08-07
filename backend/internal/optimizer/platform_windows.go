@@ -27,9 +27,17 @@ import (
 
 var guidPattern = regexp.MustCompile(`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b`)
 
+var allowedNetworkKeywords = map[string]bool{
+	"*interruptmoderation": true, "*eee": true, "eee": true, "energyefficientethernet": true,
+	"advancedeee": true, "ulpmode": true, "gigalite": true, "powersavingmode": true,
+	"enablegreenethernet": true, "greenethernet": true, "*greenethernet": true, "autodisablegigabit": true,
+}
+
 const (
 	processorPowerSubgroup       = "54533251-82be-4824-96c1-47b60b740d00"
 	storagePowerSubgroup         = "0012ee47-9041-4b5d-9b77-535fba8b1442"
+	wirelessPowerSubgroup        = "19cbb8fa-5279-450e-9fac-8a3d5fedd0c1"
+	wirelessPowerSetting         = "12bbebe6-58d6-4636-95bb-3217ef867c1a"
 	highPerformancePersonality   = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
 	powerAccessIndividualSetting = 18
 )
@@ -42,6 +50,7 @@ var maximumPowerSettings = []PowerSetting{
 	{Subgroup: storagePowerSubgroup, Setting: "6738e2c4-e8a5-4a42-b16a-e040e769756e", Value: 0, Name: "Не отключать накопитель во время работы от сети"},
 	{Subgroup: "501a4d13-42af-4429-9fd1-a8218c268e20", Setting: "ee12f906-d277-404b-b6da-e5fa1a576df5", Value: 0, Name: "PCIe Link State Power Management off"},
 	{Subgroup: "2a737441-1930-4402-8d77-b2bebba308a3", Setting: "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", Value: 0, Name: "USB selective suspend off"},
+	{Subgroup: wirelessPowerSubgroup, Setting: wirelessPowerSetting, Value: 0, Name: "Wi-Fi power saving: Maximum Performance on AC"},
 }
 
 var optionalMaximumPowerSettings = []PowerSetting{
@@ -710,7 +719,11 @@ func availableMaximumPowerSettings(scheme string) ([]PowerSetting, error) {
 
 	settings := make([]PowerSetting, 0, len(candidates))
 	ids := make(map[string]bool, len(candidates))
+	hasWiFi := hasPhysicalWiFi()
 	for _, setting := range candidates {
+		if strings.EqualFold(setting.Subgroup, wirelessPowerSubgroup) && !hasWiFi {
+			continue
+		}
 		if _, err := powerACValue(scheme, setting.Subgroup, setting.Setting); err == nil {
 			id := powerTweakID(setting)
 			if ids[id] {
@@ -919,7 +932,7 @@ $PSModuleAutoLoadingPreference = 'None'
 Import-Module -Name "$PSHOME\Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1" -ErrorAction Stop
 Import-Module -Name "$PSHOME\Modules\NetAdapter\NetAdapter.psd1" -ErrorAction Stop
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
-$wanted = @('*InterruptModeration','*EEE','EEE','EnergyEfficientEthernet','AdvancedEEE','ULPMode','GigaLite')
+$wanted = @('*InterruptModeration','*EEE','EEE','EnergyEfficientEthernet','AdvancedEEE','ULPMode','GigaLite','PowerSavingMode','EnableGreenEthernet','GreenEthernet','*GreenEthernet','AutoDisableGigabit')
 $result = @()
 NetAdapter\Get-NetAdapter -Physical -ErrorAction Stop | Where-Object { $_.NdisPhysicalMedium -eq 14 } | ForEach-Object {
   $adapter = $_

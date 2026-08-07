@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, type PropsWithChildren } from 'react'
+import { createContext, useContext, useMemo, type PropsWithChildren } from 'react'
 import { createBackendClient } from '../platform/backend/create-client'
 import type { BackendClient } from '../platform/backend/client'
 
@@ -11,7 +11,6 @@ const BackendContext = createContext<BackendContextValue | null>(null)
 
 export function BackendProvider({ children }: PropsWithChildren) {
   const value = useMemo(createBackendClient, [])
-  useEffect(() => () => { void value.client.stop() }, [value])
   return <BackendContext value={value}>{children}</BackendContext>
 }
 

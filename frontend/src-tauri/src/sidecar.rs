@@ -213,6 +213,15 @@ fn allowed_method(method: &str) -> bool {
             | "services.set"
             | "network.interfaces"
             | "network.test"
+            | "network.udp"
+            | "network.bufferbloat"
+            | "storage.volumes"
+            | "storage.test"
+            | "storage.scan.start"
+            | "storage.scan.status"
+            | "storage.scan.cancel"
+            | "storage.delete.preview"
+            | "storage.delete.confirm"
             | "advisor.background"
             | "benchmark.compare"
             | "gaming.scan"
@@ -376,6 +385,15 @@ mod tests {
             "optimization.restore_tweak",
             "services.list",
             "advisor.background",
+            "network.udp",
+            "network.bufferbloat",
+            "storage.volumes",
+            "storage.test",
+            "storage.scan.start",
+            "storage.scan.status",
+            "storage.scan.cancel",
+            "storage.delete.preview",
+            "storage.delete.confirm",
             "benchmark.compare",
             "gaming.attach_benchmark",
             "updates.status",

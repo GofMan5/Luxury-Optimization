@@ -101,7 +101,7 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-      - run: chmod +x build.sh && ./build.sh 1.0.5-ci
+      - run: chmod +x build.sh && ./build.sh 1.0.6-ci
       - uses: actions/upload-artifact@v7
         with:
           name: Luxury-Optimization-recovery-cli

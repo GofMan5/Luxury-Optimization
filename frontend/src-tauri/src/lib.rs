@@ -1,5 +1,7 @@
 mod sidecar;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let application = tauri::Builder::default()
@@ -12,6 +14,20 @@ pub fn run() {
             sidecar::sidecar_write,
             sidecar::sidecar_stop,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                match window.label() {
+                    "storage-analyzer" => {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    "main" if sidecar::begin_graceful_exit(window.app_handle()) => {
+                        api.prevent_close();
+                    }
+                    _ => {}
+                }
+            }
+        })
         .build(tauri::generate_context!())
         .expect("failed to build Luxury Optimization desktop application");
 

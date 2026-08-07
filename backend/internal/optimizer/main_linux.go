@@ -51,6 +51,8 @@ func run(args []string) error {
 		return servicesCommand(args[1:])
 	case "network":
 		return networkCommand(args[1:])
+	case "storage":
+		return storageCommand(args[1:])
 	case "benchmark":
 		return benchmarkCommand(args[1:])
 	case "backups":
@@ -259,7 +261,9 @@ func printHelp() {
   games scan|add|list|run|remove       Steam и сохранённые игровые профили
   startup list|disable|enable          пользовательская XDG autostart
   services list [--json]               read-only systemd inventory
-  network interfaces|test              интерфейсы и TCP latency/jitter
+  network interfaces|test|udp|bufferbloat
+                                        TCP/UDP latency и loaded-latency диагностика
+  storage volumes|test                 bounded filesystem path probe с read-back
   benchmark template|compare           FPS/1% low/p95 frametime
   backups list | restore               совместимые безопасные no-op без persistent tweaks
   clean --days 2                       только временные файлы самого приложения

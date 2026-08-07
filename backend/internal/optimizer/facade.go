@@ -16,7 +16,14 @@ import (
 // Service is the stable application boundary used by the desktop sidecar.
 // The existing platform transaction code stays behind it so legacy backup,
 // registry and mutex contracts remain unchanged.
-type Service struct{ tweakMu sync.Mutex }
+type Service struct {
+	tweakMu        sync.Mutex
+	probeMu        sync.Mutex
+	scanMu         sync.Mutex
+	scan           *storageScanJob
+	scanCache      map[string]storageScanCacheEntry
+	scanCacheOrder []string
+}
 
 type MutationResult struct {
 	Changed  bool   `json:"changed"`
@@ -237,6 +244,32 @@ func (s *Service) NetworkInterfaces() ([]NetworkInterface, error) {
 
 func (s *Service) NetworkTest(address string, count, timeoutMS int) (LatencyReport, error) {
 	return measureTCPLatency(address, count, time.Duration(timeoutMS)*time.Millisecond)
+}
+
+func (s *Service) NetworkTestContext(ctx context.Context, address string, count, timeoutMS int) (LatencyReport, error) {
+	return measureTCPLatencyContext(ctx, address, count, time.Duration(timeoutMS)*time.Millisecond)
+}
+
+func (s *Service) NetworkUDP(ctx context.Context, address string, count, timeoutMS int) (UDPLatencyReport, error) {
+	return measureUDPDNSLatency(ctx, address, count, time.Duration(timeoutMS)*time.Millisecond)
+}
+
+func (s *Service) NetworkBufferbloat(ctx context.Context, request BufferbloatRequest) (BufferbloatReport, error) {
+	if !s.probeMu.TryLock() {
+		return BufferbloatReport{}, errors.New("another heavy diagnostic is already running")
+	}
+	defer s.probeMu.Unlock()
+	return measureBufferbloat(ctx, request)
+}
+
+func (s *Service) StorageVolumes() (StorageVolumesReport, error) { return listStorageVolumes() }
+
+func (s *Service) StorageTest(ctx context.Context, path string, sizeMB, blockKB int) (StoragePathReport, error) {
+	if !s.probeMu.TryLock() {
+		return StoragePathReport{}, errors.New("another heavy diagnostic is already running")
+	}
+	defer s.probeMu.Unlock()
+	return measureStoragePath(ctx, path, sizeMB, blockKB)
 }
 
 func (s *Service) CompareBenchmarks(before, after BenchmarkSet) (BenchmarkComparison, error) {

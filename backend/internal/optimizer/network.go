@@ -1,6 +1,7 @@
 package optimizer
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -8,7 +9,6 @@ import (
 	"math"
 	"net"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -64,8 +64,62 @@ func networkCommand(args []string) error {
 		}
 		return nil
 	}
+	if args[0] == "udp" {
+		set := flag.NewFlagSet("network udp", flag.ContinueOnError)
+		address := set.String("address", "1.1.1.1:53", "DNS server IP:port")
+		count := set.Int("count", 10, "число DNS запросов, 3–50")
+		timeout := set.Duration("timeout", 2*time.Second, "таймаут одного DNS запроса")
+		jsonOnly := set.Bool("json", false, "вывести JSON")
+		if err := set.Parse(args[1:]); err != nil {
+			return err
+		}
+		if set.NArg() != 0 {
+			return errors.New("лишние аргументы network udp")
+		}
+		report, err := measureUDPDNSLatency(context.Background(), *address, *count, *timeout)
+		if err != nil {
+			return err
+		}
+		if *jsonOnly {
+			data, err := json.MarshalIndent(report, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+			return nil
+		}
+		fmt.Printf("UDP DNS %s: median %.2f ms, p95 %.2f ms, jitter %.2f ms, failures %d/%d\n", displayText(report.Address), report.MedianMS, report.P95MS, report.JitterMS, report.Failed, report.Attempts)
+		return nil
+	}
+	if args[0] == "bufferbloat" {
+		set := flag.NewFlagSet("network bufferbloat", flag.ContinueOnError)
+		probeAddress := set.String("probe", "1.1.1.1:443", "TCP latency probe host:port")
+		duration := set.Duration("duration", 3*time.Second, "duration per loaded phase, 2s–15s")
+		streams := set.Int("streams", 1, "parallel streams, 1–4")
+		jsonOnly := set.Bool("json", false, "вывести JSON")
+		if err := set.Parse(args[1:]); err != nil {
+			return err
+		}
+		if set.NArg() != 0 {
+			return errors.New("лишние аргументы network bufferbloat")
+		}
+		report, err := measureBufferbloat(context.Background(), BufferbloatRequest{ProbeAddress: *probeAddress, DurationMS: int(duration.Milliseconds()), Streams: *streams})
+		if err != nil {
+			return err
+		}
+		if *jsonOnly {
+			data, err := json.MarshalIndent(report, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+			return nil
+		}
+		fmt.Printf("Bufferbloat %s: download %s (+%.2f ms p95), upload %s (+%.2f ms p95)\n", displayText(report.ProbeAddress), report.Download.Rating, report.Download.P95IncreaseMS, report.Upload.Rating, report.Upload.P95IncreaseMS)
+		return nil
+	}
 	if args[0] != "test" {
-		return errors.New("network поддерживает interfaces и test")
+		return errors.New("network поддерживает interfaces, test, udp и bufferbloat")
 	}
 	set := flag.NewFlagSet("network test", flag.ContinueOnError)
 	address := set.String("address", "1.1.1.1:443", "host:port")
@@ -113,13 +167,12 @@ func listNetworkInterfaces() ([]NetworkInterface, error) {
 }
 
 func measureTCPLatency(address string, count int, timeout time.Duration) (LatencyReport, error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil || host == "" {
-		return LatencyReport{}, errors.New("address должен иметь вид host:port")
-	}
-	portNumber, err := strconv.Atoi(port)
-	if err != nil || portNumber < 1 || portNumber > 65535 {
-		return LatencyReport{}, errors.New("некорректный TCP port")
+	return measureTCPLatencyContext(context.Background(), address, count, timeout)
+}
+
+func measureTCPLatencyContext(ctx context.Context, address string, count int, timeout time.Duration) (LatencyReport, error) {
+	if err := validateHostPort(address, false); err != nil {
+		return LatencyReport{}, err
 	}
 	if count < 3 || count > 100 || timeout < 100*time.Millisecond || timeout > 10*time.Second {
 		return LatencyReport{}, errors.New("count должен быть 3–100, timeout — 100ms–10s")
@@ -127,32 +180,22 @@ func measureTCPLatency(address string, count int, timeout time.Duration) (Latenc
 	if time.Duration(count)*timeout > 5*time.Minute {
 		return LatencyReport{}, errors.New("максимальная длительность network test ограничена пятью минутами")
 	}
-	report := LatencyReport{Address: address, Attempts: count}
+	samples := make([]float64, 0, count)
+	failed := 0
 	for i := 0; i < count; i++ {
-		started := time.Now()
-		connection, err := net.DialTimeout("tcp", address, timeout)
+		if err := ctx.Err(); err != nil {
+			return LatencyReport{}, err
+		}
+		elapsed, err := probeTCP(ctx, address, timeout)
 		if err != nil {
-			report.Failed++
+			failed++
 			continue
 		}
-		elapsed := float64(time.Since(started).Microseconds()) / 1000
-		connection.Close()
-		report.SamplesMS = append(report.SamplesMS, elapsed)
+		samples = append(samples, elapsed)
 	}
-	report.Succeeded = len(report.SamplesMS)
+	report := summarizeLatency(address, count, samples, failed)
 	if report.Succeeded == 0 {
 		return report, errors.New("все TCP latency attempts завершились ошибкой")
-	}
-	ordered := append([]float64(nil), report.SamplesMS...)
-	sort.Float64s(ordered)
-	report.MinMS, report.MaxMS = ordered[0], ordered[len(ordered)-1]
-	report.MedianMS = percentile(ordered, 0.5)
-	report.P95MS = percentile(ordered, 0.95)
-	if len(report.SamplesMS) > 1 {
-		for i := 1; i < len(report.SamplesMS); i++ {
-			report.JitterMS += math.Abs(report.SamplesMS[i] - report.SamplesMS[i-1])
-		}
-		report.JitterMS /= float64(len(report.SamplesMS) - 1)
 	}
 	return report, nil
 }

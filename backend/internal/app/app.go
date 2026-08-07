@@ -12,6 +12,7 @@ import (
 	"github.com/GofMan5/Luxury-Optimization/internal/features/optimization"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/services"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/startup"
+	"github.com/GofMan5/Luxury-Optimization/internal/features/storage"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/system"
 	"github.com/GofMan5/Luxury-Optimization/internal/features/updates"
 	"github.com/GofMan5/Luxury-Optimization/internal/optimizer"
@@ -39,6 +40,15 @@ var AllowedMethods = []string{
 	"services.set",
 	"network.interfaces",
 	"network.test",
+	"network.udp",
+	"network.bufferbloat",
+	"storage.volumes",
+	"storage.test",
+	"storage.scan.start",
+	"storage.scan.status",
+	"storage.scan.cancel",
+	"storage.delete.preview",
+	"storage.delete.confirm",
 	"advisor.background",
 	"benchmark.compare",
 	"gaming.scan",
@@ -68,8 +78,10 @@ func (application *Application) Handle(ctx context.Context, method string, paylo
 		return startup.Handle(ctx, application.optimizer, method, payload)
 	case "services.list", "services.set":
 		return services.Handle(ctx, application.optimizer, method, payload)
-	case "network.interfaces", "network.test":
+	case "network.interfaces", "network.test", "network.udp", "network.bufferbloat":
 		return network.Handle(ctx, application.optimizer, method, payload)
+	case "storage.volumes", "storage.test", "storage.scan.start", "storage.scan.status", "storage.scan.cancel", "storage.delete.preview", "storage.delete.confirm":
+		return storage.Handle(ctx, application.optimizer, method, payload)
 	case "advisor.background":
 		return advisor.Handle(ctx, application.optimizer, method, payload)
 	case "benchmark.compare":

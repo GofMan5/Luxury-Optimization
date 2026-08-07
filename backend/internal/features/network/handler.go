@@ -14,7 +14,13 @@ type testRequest struct {
 	TimeoutMS int    `json:"timeout_ms"`
 }
 
-func Handle(_ context.Context, service *optimizer.Service, method string, payload json.RawMessage) (any, error) {
+type udpRequest struct {
+	Address   string `json:"address"`
+	Count     int    `json:"count"`
+	TimeoutMS int    `json:"timeout_ms"`
+}
+
+func Handle(ctx context.Context, service *optimizer.Service, method string, payload json.RawMessage) (any, error) {
 	switch method {
 	case "network.interfaces":
 		if _, err := protocol.DecodePayload[struct{}](payload); err != nil {
@@ -26,7 +32,19 @@ func Handle(_ context.Context, service *optimizer.Service, method string, payloa
 		if err != nil {
 			return nil, err
 		}
-		return service.NetworkTest(request.Address, request.Count, request.TimeoutMS)
+		return service.NetworkTestContext(ctx, request.Address, request.Count, request.TimeoutMS)
+	case "network.udp":
+		request, err := protocol.DecodePayload[udpRequest](payload)
+		if err != nil {
+			return nil, err
+		}
+		return service.NetworkUDP(ctx, request.Address, request.Count, request.TimeoutMS)
+	case "network.bufferbloat":
+		request, err := protocol.DecodePayload[optimizer.BufferbloatRequest](payload)
+		if err != nil {
+			return nil, err
+		}
+		return service.NetworkBufferbloat(ctx, request)
 	default:
 		return nil, protocol.ErrMethodNotFound
 	}

@@ -38,9 +38,10 @@ var tweakCatalog = map[string]tweakMetadata{
 	"startup-delay":        {"Removes the post-sign-in delay before startup applications launch.", "Starts user applications sooner after sign-in.", "Medium: creates a stronger CPU and storage burst during login.", "medium"},
 	"menu-show-delay":      {"Removes the configured menu opening delay.", "Makes classic Windows menus respond immediately.", "Low: menus may feel too abrupt; no direct FPS benefit.", "low"},
 	"power-plan":           {"Creates a separate reversible AC performance plan without editing the original plan.", "Can reduce frequency and device power-state transition latency during sustained play.", "High: increases power use, heat and fan noise; use on AC power with adequate cooling.", "high"},
-	"linux-gamemode":       {"Runs the game through Feral GameMode when it is installed.", "Lets the distribution apply temporary game-scoped performance policy.", "Low: unavailable systems safely launch without it.", "low"},
-	"linux-process":        {"Keeps priority and CPU affinity opt-in per saved launch.", "Allows targeted process tuning without global scheduler changes.", "Medium: bad affinity masks can reduce performance.", "medium"},
-	"linux-windows-skip":   {"Explicitly skips Windows-only registry, power and adapter settings.", "Prevents fake compatibility and partial mutation on Linux.", "Low: no system change is performed.", "low"},
+	"power-12bbebe6-58d6-4636-95bb-3217ef867c1a": {"Sets the native Wi-Fi adapter AC policy to Maximum Performance inside the cloned plan.", "Can avoid wireless power-save wake latency and throughput drops while gaming on Wi-Fi.", "Medium: applies only when a physical Wi-Fi adapter and the documented power setting exist; AC power use increases.", "medium"},
+	"linux-gamemode":     {"Runs the game through Feral GameMode when it is installed.", "Lets the distribution apply temporary game-scoped performance policy.", "Low: unavailable systems safely launch without it.", "low"},
+	"linux-process":      {"Keeps priority and CPU affinity opt-in per saved launch.", "Allows targeted process tuning without global scheduler changes.", "Medium: bad affinity masks can reduce performance.", "medium"},
+	"linux-windows-skip": {"Explicitly skips Windows-only registry, power and adapter settings.", "Prevents fake compatibility and partial mutation on Linux.", "Low: no system change is performed.", "low"},
 }
 
 func describePlan(plan *Plan) {

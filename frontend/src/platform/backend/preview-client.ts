@@ -1,5 +1,5 @@
 import type { BackendClient } from './client'
-import type { Audit, BackgroundReport, BackupSummary, BenchmarkComparison, BenchmarkSet, CheckpointStatus, GameBenchmarkAttachment, GameHistoryReport, GameLaunchRecord, GamesReport, Handshake, NetworkInterface, Plan, SavedGame, SavedGames, ServicesReport, StartupReport, SystemRestorePoint, UpdateStatus } from '../../shared/contracts/domain'
+import type { Audit, BackgroundReport, BackupSummary, BenchmarkComparison, BenchmarkSet, BufferbloatReport, CheckpointStatus, GameBenchmarkAttachment, GameHistoryReport, GameLaunchRecord, GamesReport, Handshake, NetworkInterface, Plan, SavedGame, SavedGames, ServicesReport, StartupReport, StoragePathReport, StorageScanReport, StorageScanStart, StorageScanStatus, StorageVolumesReport, SystemRestorePoint, UDPLatencyReport, UpdateStatus } from '../../shared/contracts/domain'
 
 const hardware = {
   os: { caption: 'Windows 11 Pro', version: '24H2', build_number: '26100', architecture: '64-bit' },
@@ -11,7 +11,7 @@ const hardware = {
 
 const audit: Audit = {
   generated_at: new Date().toISOString(),
-  version: '1.0.5-preview',
+  version: '1.0.6-preview',
   hardware,
   administrator: false,
   active_power_guid: 'Balanced',
@@ -53,6 +53,10 @@ export class PreviewBackendClient implements BackendClient {
   #games: SavedGame[] = [{ id: previewGameID('C:\\Games\\Example Game\\game.exe'), name: 'Example Game', path: 'C:\\Games\\Example Game\\game.exe', profile: 'medium', priority: 'normal' }]
   #launches: GameLaunchRecord[] = []
   #benchmarks: GameBenchmarkAttachment[] = []
+  #scanID = ''
+  #scanRoot = 'C:\\'
+  #scanPolls = 0
+  #scanCancelled = false
 
   async call<T>(method: string, payload?: unknown, signal?: AbortSignal): Promise<T> {
     await pause(90, signal)
@@ -60,7 +64,7 @@ export class PreviewBackendClient implements BackendClient {
     let result: unknown
     switch (method) {
       case 'system.handshake':
-        result = { product: 'Luxury Optimization', version: '1.0.5-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
+        result = { product: 'Luxury Optimization', version: '1.0.6-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
         break
       case 'optimization.audit': result = audit; break
       case 'optimization.plan': result = previewPlan(body.profile === 'max' ? maxPlan : body.profile === 'medium' ? mediumPlan : litePlan, this.#tweakBackups); break
@@ -95,6 +99,27 @@ export class PreviewBackendClient implements BackendClient {
       case 'advisor.background': result = previewBackground(Number(body.sample_ms) || 1500); break
       case 'network.interfaces': result = previewInterfaces; break
       case 'network.test': result = { address: body.address, attempts: body.count, succeeded: body.count, failed: 0, min_ms: 8.2, median_ms: 9.1, p95_ms: 10.4, max_ms: 10.4, jitter_ms: 0.7, samples_ms: [8.2, 9.1, 10.4] }; break
+      case 'network.udp': result = { protocol: 'dns_rfc1035', question: 'example.com A', address: String(body.address), attempts: Number(body.count), succeeded: Number(body.count), failed: 0, min_ms: 7.8, median_ms: 8.7, p95_ms: 10.1, max_ms: 10.1, jitter_ms: 0.6, samples_ms: [7.8, 8.7, 10.1] } satisfies UDPLatencyReport; break
+      case 'network.bufferbloat': result = previewBufferbloat(Number(body.duration_ms) || 3000, Number(body.streams) || 1) satisfies BufferbloatReport; break
+      case 'storage.volumes': result = previewStorageVolumes; break
+      case 'storage.test': result = { path: String(body.path), volume: previewStorageVolume, size_bytes: Number(body.size_mb) * 1024 * 1024, block_bytes: Number(body.block_kb) * 1024, buffered_write_mb_s: 1180.4, durable_write_mb_s: 924.7, sync_ms: 4.2, buffered_read_mb_s: 2840.2, sha256: '0'.repeat(64), verified: true, temporary_file_removed: true } satisfies StoragePathReport; break
+      case 'storage.scan.start': {
+        this.#scanID = previewHistoryID(Date.now()) + previewHistoryID(Date.now() + 1)
+        if (!body.refresh_scan_id) this.#scanRoot = body.node_id === 'games' ? 'C:\\Games' : String(body.path || 'C:\\')
+        this.#scanPolls = 0; this.#scanCancelled = false
+        result = { scan_id: this.#scanID, root: this.#scanRoot, started_at: new Date().toISOString() } satisfies StorageScanStart
+        break
+      }
+      case 'storage.scan.status': {
+        const started = new Date(Date.now() - 1200).toISOString()
+        if (this.#scanCancelled) result = { scan_id: this.#scanID, state: 'cancelled', root: this.#scanRoot, started_at: started, elapsed_ms: 800, files_scanned: 12_400, directories_scanned: 940, bytes_scanned: 92_000_000_000, skipped: 3 } satisfies StorageScanStatus
+        else if (this.#scanPolls++ < 2) result = { scan_id: this.#scanID, state: 'scanning', root: this.#scanRoot, started_at: started, elapsed_ms: 500, files_scanned: 8_420, directories_scanned: 610, bytes_scanned: 68_000_000_000, skipped: 2, current_path: 'Games\\Example Game\\content' } satisfies StorageScanStatus
+        else result = { scan_id: this.#scanID, state: 'complete', root: this.#scanRoot, started_at: started, elapsed_ms: 1280, files_scanned: 182_440, directories_scanned: 12_840, bytes_scanned: 622_770_257_920, skipped: 7, report: previewStorageScan(this.#scanRoot) } satisfies StorageScanStatus
+        break
+      }
+      case 'storage.scan.cancel': this.#scanCancelled = true; result = { cancelled: true }; break
+      case 'storage.delete.preview': result = { confirmation_token: previewHistoryID(Date.now()) + previewHistoryID(Date.now() + 1), name: String(body.node_id), kind: String(body.node_id).startsWith('file-') ? 'file' : 'directory', size_bytes: 2 * 1024 ** 3, files: 1_200, directories: 80, modified_at: new Date().toISOString(), expires_at: new Date(Date.now() + 45_000).toISOString(), requires_typed_name: !String(body.node_id).startsWith('file-') }; break
+      case 'storage.delete.confirm': result = { deleted: true, recycled: true, name: 'Preview item', kind: 'file' }; break
       case 'benchmark.compare': result = previewBenchmark(body.before as BenchmarkSet, body.after as BenchmarkSet); break
       case 'gaming.scan': result = previewGames; break
       case 'gaming.saved': result = { version: 1, games: this.#games } satisfies SavedGames; break
@@ -129,7 +154,7 @@ export class PreviewBackendClient implements BackendClient {
       case 'restore.open_system': result = { changed: false, message: 'Windows System Restore opened.' }; break
       case 'cleanup.run': result = { files: 18, dirs: 2, bytes: 14_680_064, skipped: 1 }; break
       case 'updates.status': result = updateStatus(); break
-      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.5', update_ready: false }; break
+      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.6', update_ready: false }; break
       case 'updates.install': result = { changed: false, message: 'Installed version is current.' }; break
       default: throw new Error(`Preview backend does not implement ${method}`)
     }
@@ -155,11 +180,50 @@ function previewBackground(sampleMS: number): BackgroundReport {
   }
 }
 const previewInterfaces: NetworkInterface[] = [{ index: 4, name: 'Ethernet', mtu: 1500, flags: 'up|broadcast|multicast', addresses: ['192.168.1.20/24'] }]
+const previewStorageVolume = { path: 'C:\\', name: 'Games', file_system: 'NTFS', kind: 'fixed', total_bytes: 1_000_000_000_000, available_bytes: 420_000_000_000, read_only: false }
+const previewStorageVolumes: StorageVolumesReport = { volumes: [previewStorageVolume], skipped: 0 }
 const previewGames: GamesReport = { games: [{ source: 'Steam', id: '730', name: 'Example Game', install_dir: 'C:\\Games\\Example Game', executables: ['C:\\Games\\Example Game\\game.exe'] }] }
 const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'lite', status: 'applied', restorable: true }]
 const previewSystemPoints: SystemRestorePoint[] = [{ sequence_number: 42, description: 'Before driver update', created_at: new Date(Date.now() - 86_400_000).toISOString(), restore_point_type: 0 }]
 function updateStatus(): UpdateStatus {
-  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.5-preview', update_ready: false }
+  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.6-preview', update_ready: false }
+}
+
+function previewBufferbloat(durationMS: number, streams: number): BufferbloatReport {
+  const latency = (median: number, p95: number) => ({ address: '1.1.1.1:443', attempts: 12, succeeded: 12, failed: 0, min_ms: median - 0.8, median_ms: median, p95_ms: p95, max_ms: p95, jitter_ms: 0.9, samples_ms: [median - 0.8, median, p95] })
+  return {
+    probe_address: '1.1.1.1:443', duration_ms: durationMS, streams, baseline: latency(9.1, 10.4),
+    download: { supported: true, bytes: 48_000_000, throughput_mbps: 128, latency: latency(13.5, 17.2), median_increase_ms: 4.4, p95_increase_ms: 6.8, rating: 'moderate' },
+    upload: { supported: true, bytes: 18_000_000, throughput_mbps: 48, latency: latency(19.2, 28.8), median_increase_ms: 10.1, p95_increase_ms: 18.4, rating: 'moderate' },
+  }
+}
+
+function previewStorageScan(root: string): StorageScanReport {
+  const gib = 1024 ** 3
+  const children = root === 'C:\\' ? [
+    { id: 'games', deletable: true, name: 'Games', kind: 'directory' as const, size_bytes: 312 * gib, files: 84_200, directories: 4_120 },
+    { id: 'users', deletable: false, name: 'Users', kind: 'directory' as const, size_bytes: 128 * gib, files: 54_100, directories: 6_200 },
+    { id: 'windows', deletable: false, name: 'Windows', kind: 'directory' as const, size_bytes: 72 * gib, files: 31_240, directories: 2_100 },
+    { id: 'programs', deletable: false, name: 'Program Files', kind: 'directory' as const, size_bytes: 56 * gib, files: 12_900, directories: 410 },
+    { deletable: false, name: 'Other files', kind: 'other' as const, size_bytes: 12 * gib, files: 120, directories: 10 },
+  ] : [
+    { id: 'example', deletable: true, name: 'Example Game', kind: 'directory' as const, size_bytes: 188 * gib, files: 42_000, directories: 1_400 },
+    { id: 'library', deletable: true, name: 'Second Library', kind: 'directory' as const, size_bytes: 96 * gib, files: 31_000, directories: 1_100 },
+    { deletable: false, name: 'Other games', kind: 'other' as const, size_bytes: 28 * gib, files: 11_200, directories: 620 },
+  ]
+  return {
+    root, volume: previewStorageVolume, generated_at: new Date().toISOString(), elapsed_ms: 1280,
+    total_bytes: children.reduce((sum, item) => sum + item.size_bytes, 0), files: children.reduce((sum, item) => sum + item.files, 0), directories: children.reduce((sum, item) => sum + item.directories, 0), skipped: 7, partial: false,
+    ...(root === 'C:\\' ? {} : { parent: { id: 'up', deletable: false, name: '..', kind: 'directory' as const, size_bytes: 0, files: 0, directories: 0 } }), children,
+    largest_files: [
+      { id: 'file-game-content', deletable: true, name: 'game-content.pak', relative_path: 'Games\\Example Game\\game-content.pak', extension: '.pak', size_bytes: 42 * gib },
+      { id: 'file-textures', deletable: true, name: 'textures.bundle', relative_path: 'Games\\Example Game\\textures.bundle', extension: '.bundle', size_bytes: 18 * gib },
+      { id: 'file-capture', deletable: true, name: 'capture.mkv', relative_path: 'Users\\Preview\\Videos\\capture.mkv', extension: '.mkv', size_bytes: 11 * gib },
+    ],
+    extensions: [
+      { extension: '.pak', size_bytes: 244 * gib, files: 840 }, { extension: '.bundle', size_bytes: 118 * gib, files: 420 }, { extension: '.mkv', size_bytes: 64 * gib, files: 92 }, { extension: '.dll', size_bytes: 28 * gib, files: 8_400 },
+    ],
+  }
 }
 
 function previewBenchmark(before: BenchmarkSet, after: BenchmarkSet): BenchmarkComparison {

@@ -27,6 +27,11 @@ Unsupported settings are capabilities, not errors: report them, mark them `skipp
 | Service inventory | Makes background state visible | Guarded single-target startup changes on Windows; critical services protected; Linux systemd stays read-only |
 | Measured background-load advisor | Finds active CPU/I/O contenders without a debloat list | Two native snapshots, exact startup/service links, protected system targets and no direct mutation |
 | TCP and benchmark tools | Produce comparable evidence | Bounded timeouts, at least three runs, median/MAD threshold |
+| RFC 1035 UDP/DNS diagnostic | Measures a reproducible UDP request/response path without raw sockets | Fixed query, explicit IP endpoint, matching transaction ID, bounded attempts/timeouts |
+| Loaded-latency diagnostic | Exposes download/upload queueing instead of guessing network tweaks | Fixed HTTPS host, 128 MiB/direction, separate capability results, one heavy diagnostic at a time |
+| Filesystem path probe | Finds large local storage regressions with read-back evidence | Local path only, free-space headroom, bounded temp file, sync, SHA-256 and mandatory cleanup |
+| Standalone space analyzer | Finds large folders/files without blocking the main workflow | Bounded parallel scan, visited-folder cache, explicit refresh, reparse/mount guards and capped output |
+| Analyzer deletion | Removes an explicitly reviewed file or folder without exposing raw delete paths | Opaque IDs, short-lived confirmation, identity revalidation, protected system paths and Recycle Bin/Trash only |
 | Linux GameMode | Native session policy used by games and distributions | Used only when `gamemoderun` exists; direct fallback |
 | Linux nice/affinity | Native session process controls | Missing `CAP_SYS_NICE` or affinity support is skipped |
 | GitHub Release updater | Keeps standalone binaries current | Opt-in, `1.0.x` pin, HTTPS allowlist, size limits and SHA-256 |

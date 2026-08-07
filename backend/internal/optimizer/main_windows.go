@@ -89,6 +89,8 @@ func run(args []string) error {
 		return servicesCommand(args[1:])
 	case "network":
 		return networkCommand(args[1:])
+	case "storage":
+		return storageCommand(args[1:])
 	case "benchmark":
 		return benchmarkCommand(args[1:])
 	case "backups":
@@ -409,7 +411,9 @@ func printHelp() {
   games scan [--json]                  найти Steam, Epic и Xbox игры
   games add|list|run|remove            сохранить и запускать per-game профили
   services list [--json]               read-only список служб Windows
-  network interfaces|test              интерфейсы или TCP latency/jitter
+  network interfaces|test|udp|bufferbloat
+                                        TCP/UDP latency и loaded-latency диагностика
+  storage volumes|test                 bounded filesystem path probe с read-back
   benchmark template|compare           сравнить FPS/1% low/p95 frametime
   backups list [--json]                sealed restore center (нужен admin)
   update check|install|enable|disable  обновления из GitHub Releases с SHA-256

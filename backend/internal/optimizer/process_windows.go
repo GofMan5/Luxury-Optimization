@@ -14,7 +14,21 @@ import (
 var (
 	getProcessAffinityMask = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetProcessAffinityMask")
 	setProcessAffinityMask = windows.NewLazySystemDLL("kernel32.dll").NewProc("SetProcessAffinityMask")
+	setProcessInformation  = windows.NewLazySystemDLL("kernel32.dll").NewProc("SetProcessInformation")
+	getProcessInformation  = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetProcessInformation")
 )
+
+const (
+	processPowerThrottlingClass          = 4
+	processPowerThrottlingVersion        = 1
+	processPowerThrottlingExecutionSpeed = 0x1
+)
+
+type processPowerThrottlingState struct {
+	Version     uint32
+	ControlMask uint32
+	StateMask   uint32
+}
 
 func processPriorityClass(value string) (uint32, error) {
 	switch strings.ToLower(value) {
@@ -51,14 +65,14 @@ func tuneGameProcess(pid uint32, priority string, affinity uintptr) error {
 	if err != nil {
 		return err
 	}
-	if priorityClass == 0 && affinity == 0 {
-		return nil
-	}
 	handle, err := windows.OpenProcess(windows.PROCESS_SET_INFORMATION|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
 		return err
 	}
 	defer windows.CloseHandle(handle)
+	if err := disableProcessPowerThrottling(handle); err != nil {
+		return err
+	}
 	if priorityClass != 0 {
 		if err := windows.SetPriorityClass(handle, priorityClass); err != nil {
 			return err
@@ -90,6 +104,32 @@ func tuneGameProcess(pid uint32, priority string, affinity uintptr) error {
 		if actual != affinity {
 			return fmt.Errorf("affinity read-back: получено 0x%X вместо 0x%X", actual, affinity)
 		}
+	}
+	return nil
+}
+
+func disableProcessPowerThrottling(handle windows.Handle) error {
+	if setProcessInformation.Find() != nil || getProcessInformation.Find() != nil {
+		return nil
+	}
+	desired := processPowerThrottlingState{Version: processPowerThrottlingVersion, ControlMask: processPowerThrottlingExecutionSpeed}
+	result, _, callErr := setProcessInformation.Call(uintptr(handle), processPowerThrottlingClass, uintptr(unsafe.Pointer(&desired)), unsafe.Sizeof(desired))
+	if result == 0 {
+		if callErr == windows.ERROR_SUCCESS {
+			callErr = errors.New("SetProcessInformation power throttling failed")
+		}
+		return fmt.Errorf("set process power throttling: %w", callErr)
+	}
+	actual := processPowerThrottlingState{Version: processPowerThrottlingVersion}
+	result, _, callErr = getProcessInformation.Call(uintptr(handle), processPowerThrottlingClass, uintptr(unsafe.Pointer(&actual)), unsafe.Sizeof(actual))
+	if result == 0 {
+		if callErr == windows.ERROR_SUCCESS {
+			callErr = errors.New("GetProcessInformation power throttling failed")
+		}
+		return fmt.Errorf("get process power throttling: %w", callErr)
+	}
+	if actual.Version != processPowerThrottlingVersion || actual.ControlMask&processPowerThrottlingExecutionSpeed == 0 || actual.StateMask&processPowerThrottlingExecutionSpeed != 0 {
+		return errors.New("process power throttling read-back mismatch")
 	}
 	return nil
 }

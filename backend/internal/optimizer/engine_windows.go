@@ -68,6 +68,8 @@ func buildPlan(profileID string) (Plan, error) {
 						category = "Процессор"
 					case strings.EqualFold(setting.Subgroup, storagePowerSubgroup):
 						category = "Накопители"
+					case strings.EqualFold(setting.Subgroup, wirelessPowerSubgroup):
+						category = "Wi-Fi"
 					}
 					plan.Items = append(plan.Items, PlanItem{ID: powerTweakID(setting), Category: category, Name: setting.Name, Current: fmt.Sprint(value), Desired: fmt.Sprint(setting.Value), Changed: value != setting.Value})
 				}
@@ -733,9 +735,8 @@ func validateBackup(backup Backup) error {
 	if err := validatePowerSettings(backup.Power.Settings); err != nil {
 		return err
 	}
-	allowedKeywords := map[string]bool{"*interruptmoderation": true, "*eee": true, "eee": true, "energyefficientethernet": true, "advancedeee": true, "ulpmode": true, "gigalite": true}
 	for _, property := range backup.Network {
-		if !guidPattern.MatchString(property.InterfaceGUID) || !allowedKeywords[strings.ToLower(property.Keyword)] {
+		if !guidPattern.MatchString(property.InterfaceGUID) || !allowedNetworkKeywords[strings.ToLower(property.Keyword)] {
 			return errors.New("backup содержит недопустимый Ethernet параметр")
 		}
 	}

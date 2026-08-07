@@ -146,6 +146,31 @@ func TestNetworkChangesOnlySelectEnabledProperties(t *testing.T) {
 	}
 }
 
+func TestStorageDeleteProtectsSystemTargetsButAllowsUserFiles(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "user-cache.bin")
+	if err := os.WriteFile(path, []byte("cache"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if storageDeleteTargetProtected(directory, path, info) {
+		t.Fatal("ordinary user file was protected")
+	}
+	for _, protected := range []string{filepath.Join(`C:\`, "$RECYCLE.BIN"), filepath.Join(`C:\`, "pagefile.sys")} {
+		if !storageDeleteTargetProtected(`C:\`, protected, info) {
+			t.Fatalf("system-managed target was deletable: %s", protected)
+		}
+	}
+	if windowsPath, err := windowsDirectory(); err == nil {
+		if windowsInfo, statErr := os.Stat(windowsPath); statErr == nil && !storageDeleteTargetProtected(filepath.VolumeName(windowsPath)+`\`, windowsPath, windowsInfo) {
+			t.Fatalf("Windows directory was deletable: %s", windowsPath)
+		}
+	}
+}
+
 func TestNetworkTweakIDIsStableAndPerAdapter(t *testing.T) {
 	left := NetProperty{InterfaceGUID: "00000000-0000-0000-0000-000000000001", Keyword: "*EEE"}
 	right := NetProperty{InterfaceGUID: "00000000-0000-0000-0000-000000000002", Keyword: "*EEE"}
@@ -351,6 +376,36 @@ func TestPowerSettingReadback(t *testing.T) {
 		}
 	}
 	t.Logf("supported native High Performance settings: %d", len(settings))
+}
+
+func TestWiFiPowerAndEthernetKeywordsFollowDetectedCapabilities(t *testing.T) {
+	active, err := activePowerGUID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, err := availableMaximumPowerSettings(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundWiFi := false
+	for _, setting := range settings {
+		foundWiFi = foundWiFi || strings.EqualFold(setting.Subgroup, wirelessPowerSubgroup) && strings.EqualFold(setting.Setting, wirelessPowerSetting)
+	}
+	if foundWiFi != hasPhysicalWiFi() {
+		t.Fatalf("Wi-Fi power capability mismatch: setting=%t adapter=%t", foundWiFi, hasPhysicalWiFi())
+	}
+	properties, err := queryNetworkProperties()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, property := range properties {
+		if !allowedNetworkKeywords[strings.ToLower(property.Keyword)] {
+			t.Fatalf("queried Ethernet property is not restorable: %+v", property)
+		}
+	}
+	if len(properties) == 0 {
+		t.Log("no supported physical Ethernet energy/latency property is exposed")
+	}
 }
 
 func TestMouseParametersReadback(t *testing.T) {

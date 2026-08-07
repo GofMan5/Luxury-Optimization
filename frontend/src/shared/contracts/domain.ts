@@ -178,6 +178,148 @@ export interface LatencyReport {
   samples_ms: number[]
 }
 
+export interface UDPLatencyReport extends LatencyReport {
+  protocol: 'dns_rfc1035'
+  question: string
+}
+
+export interface BufferbloatPhase {
+  supported: boolean
+  reason?: string
+  bytes: number
+  throughput_mbps: number
+  latency: LatencyReport
+  p95_increase_ms: number
+  median_increase_ms: number
+  rating?: 'low' | 'moderate' | 'high' | 'severe'
+}
+
+export interface BufferbloatReport {
+  probe_address: string
+  duration_ms: number
+  streams: number
+  baseline: LatencyReport
+  download: BufferbloatPhase
+  upload: BufferbloatPhase
+  warnings?: string[]
+}
+
+export interface StorageVolume {
+  path: string
+  name?: string
+  file_system: string
+  kind: string
+  total_bytes: number
+  available_bytes: number
+  read_only: boolean
+}
+
+export interface StorageVolumesReport {
+  volumes: StorageVolume[]
+  skipped: number
+  warnings?: string[]
+}
+
+export interface StoragePathReport {
+  path: string
+  volume: StorageVolume
+  size_bytes: number
+  block_bytes: number
+  buffered_write_mb_s: number
+  durable_write_mb_s: number
+  sync_ms: number
+  buffered_read_mb_s: number
+  sha256: string
+  verified: boolean
+  temporary_file_removed: boolean
+}
+
+export interface StorageScanStart {
+  scan_id: string
+  root: string
+  started_at: string
+	cached?: boolean
+}
+
+export type StorageScanState = 'scanning' | 'complete' | 'cancelled' | 'failed'
+
+export interface StorageScanNode {
+  id?: string
+	deletable: boolean
+  name: string
+  kind: 'directory' | 'file' | 'other'
+  size_bytes: number
+  files: number
+  directories: number
+}
+
+export interface StorageScanFile {
+	id?: string
+	deletable: boolean
+	name: string
+  relative_path: string
+  extension: string
+  size_bytes: number
+}
+
+export interface StorageDeletePreview {
+	confirmation_token: string
+	name: string
+	kind: 'directory' | 'file'
+	size_bytes: number
+	files: number
+	directories: number
+	modified_at: string
+	expires_at: string
+	requires_typed_name: boolean
+}
+
+export interface StorageDeleteResult {
+	deleted: boolean
+	recycled: boolean
+	name: string
+	kind: 'directory' | 'file'
+}
+
+export interface StorageScanExtension {
+  extension: string
+  size_bytes: number
+  files: number
+}
+
+export interface StorageScanReport {
+  root: string
+  volume: StorageVolume
+  generated_at: string
+  elapsed_ms: number
+  total_bytes: number
+  files: number
+  directories: number
+  skipped: number
+  partial: boolean
+  parent?: StorageScanNode
+  children: StorageScanNode[]
+  largest_files: StorageScanFile[]
+  extensions: StorageScanExtension[]
+  warnings?: string[]
+}
+
+export interface StorageScanStatus {
+  scan_id: string
+  state: StorageScanState
+  root: string
+  started_at: string
+  elapsed_ms: number
+  files_scanned: number
+  directories_scanned: number
+  bytes_scanned: number
+  skipped: number
+  current_path?: string
+  error?: string
+  report?: StorageScanReport
+	cached?: boolean
+}
+
 export interface BenchmarkRun {
   average_fps: number
   one_percent_low_fps: number

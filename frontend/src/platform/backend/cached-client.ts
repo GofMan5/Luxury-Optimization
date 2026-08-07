@@ -14,6 +14,7 @@ const ttlByMethod: Readonly<Record<string, number>> = {
   'startup.list': 20_000,
   'services.list': 60_000,
   'network.interfaces': 60_000,
+  'storage.volumes': 60_000,
   'gaming.saved': 20_000,
   'gaming.history': 10_000,
   'backups.list': 20_000,
