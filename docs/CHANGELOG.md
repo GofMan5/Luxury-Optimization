@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.7 - 2026-08-08
+
+### Product workflow and interface
+
+- Rebuilt the desktop shell around six clear destinations: Home, Optimization, Games, Measurements, Tools and Recovery.
+- Replaced the opaque `/10` overview score with a factual Lite readiness percentage and a visible Audit → Apply → Measure → Restore workflow.
+- Made Lite/Medium/Max the default optimization view while retaining the complete expert catalogue one action away.
+- Grouped game benchmarks, network and storage under Measurements; grouped measured background load, startup and services under Tools without duplicating backend calls.
+- Moved signed automatic/manual updates into the global shell and delayed the single startup check until after first render.
+- Added [source-first UX research](UX-RESEARCH-1.0.7.md) and the [implemented design specification](design/REDESIGN-1.0.7.md).
+
+### Compatibility
+
+- Kept every backend contract, capability check, profile target and legacy backup/state/registry/mutex name unchanged.
+
 ## 1.0.6 - 2026-08-08
 
 ### Network quality diagnostics

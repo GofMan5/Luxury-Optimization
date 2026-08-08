@@ -17,7 +17,7 @@ interface BenchmarkCopy {
   verdicts: Record<BenchmarkComparison['verdict'], string>
 }
 
-export default function BenchmarkScreen() {
+export default function BenchmarkScreen({ embedded = false }: { embedded?: boolean }) {
   const { client } = useBackend()
   const { language } = useLanguage()
   const c = benchmarkCopy[language]
@@ -73,8 +73,8 @@ export default function BenchmarkScreen() {
   }
 
   return (
-    <div className="page">
-      <PageHeader title={c.title} description={c.description} actions={<Button variant="primary" form="benchmark-form" type="submit" disabled={comparing || importing !== null}><Play size={16} />{comparing ? c.comparing : c.compare}</Button>} />
+    <div className={embedded ? 'system-pane' : 'page'}>
+      {embedded ? <div className="system-pane-heading"><div><h2>{c.title}</h2><p>{c.description}</p></div><Button variant="primary" form="benchmark-form" type="submit" disabled={comparing || importing !== null}><Play size={16} />{comparing ? c.comparing : c.compare}</Button></div> : <PageHeader title={c.title} description={c.description} actions={<Button variant="primary" form="benchmark-form" type="submit" disabled={comparing || importing !== null}><Play size={16} />{comparing ? c.comparing : c.compare}</Button>} />}
       {error ? <InlineAlert message={error} /> : null}
       <form id="benchmark-form" onSubmit={(event) => void compare(event)}>
         <div className="benchmark-layout">

@@ -1,5 +1,7 @@
 # Desktop design system
 
+> The 1.0.7 implementation specification superseding the older route concept is [REDESIGN-1.0.7.md](REDESIGN-1.0.7.md).
+
 The two SVG files in this directory are the implementation specification for the Tauri rewrite.
 
 ## Direction
@@ -15,8 +17,8 @@ The two SVG files in this directory are the implementation specification for the
 
 - Desktop target: 1440×900 logical pixels; concept: 1600×1000.
 - Minimum target: 900×640. Sidebar collapses to icon rail below 1080 px.
-- Navigation: Overview, Profiles, Games, Startup, Services, Network, Benchmarks, Restore, Updates.
-- Runtime state and version stay visible without turning the header into a second navigation bar.
+- Navigation: Home, Optimization, Games, Measurements, Tools, Recovery.
+- Runtime/update state and version stay visible without turning the header into a second navigation bar.
 
 ## Components
 

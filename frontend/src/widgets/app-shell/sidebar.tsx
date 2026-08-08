@@ -1,4 +1,4 @@
-import { ArchiveRestore, BarChart3, Gamepad2, Gauge, MonitorCog, Rocket, SlidersHorizontal } from 'lucide-react'
+import { ArchiveRestore, BarChart3, Gamepad2, Gauge, MonitorCog, SlidersHorizontal } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { RouteID } from '../../app/routes'
 import { useLanguage } from '../../app/language-context'
@@ -10,13 +10,12 @@ interface NavigationItem {
 }
 
 const navigation: NavigationItem[] = [
-  { id: 'overview', label: { en: 'Overview', ru: 'Обзор' }, icon: Gauge },
-  { id: 'profiles', label: { en: 'Tweaks', ru: 'ТВИКИ' }, icon: SlidersHorizontal },
+  { id: 'overview', label: { en: 'Home', ru: 'Главная' }, icon: Gauge },
+  { id: 'profiles', label: { en: 'Optimization', ru: 'Оптимизация' }, icon: SlidersHorizontal },
   { id: 'games', label: { en: 'Games', ru: 'Игры' }, icon: Gamepad2 },
-  { id: 'benchmarks', label: { en: 'Benchmarks', ru: 'Замеры' }, icon: BarChart3 },
-  { id: 'system', label: { en: 'System', ru: 'Система' }, icon: MonitorCog },
-  { id: 'restore', label: { en: 'Restore', ru: 'Восстановление' }, icon: ArchiveRestore },
-  { id: 'updates', label: { en: 'Updates', ru: 'Обновления' }, icon: Rocket },
+  { id: 'benchmarks', label: { en: 'Measurements', ru: 'Измерения' }, icon: BarChart3 },
+  { id: 'system', label: { en: 'Tools', ru: 'Инструменты' }, icon: MonitorCog },
+  { id: 'restore', label: { en: 'Recovery', ru: 'Восстановление' }, icon: ArchiveRestore },
 ]
 
 export function Sidebar({ route, onNavigate }: { route: RouteID; onNavigate: (route: RouteID) => void }) {
@@ -27,7 +26,7 @@ export function Sidebar({ route, onNavigate }: { route: RouteID; onNavigate: (ro
         <span className="brand__mark" aria-hidden="true">L</span>
         <span className="brand__text"><strong>Luxury</strong><small>Optimization</small></span>
       </div>
-      <nav className="sidebar__nav" aria-label="Primary navigation">
+      <nav className="sidebar__nav" aria-label={language === 'ru' ? 'Основная навигация' : 'Primary navigation'}>
         {navigation.map(({ id, label, icon: Icon }) => (
           <button key={id} className={`nav-item ${route === id ? 'nav-item--active' : ''}`} aria-current={route === id ? 'page' : undefined} title={label[language]} onClick={() => onNavigate(id)}>
             <Icon size={19} strokeWidth={1.8} aria-hidden={true} /><span>{label[language]}</span>

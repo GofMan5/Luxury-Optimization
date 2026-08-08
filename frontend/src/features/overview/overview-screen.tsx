@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ArrowRight, RotateCw, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, BarChart3, RotateCw, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react'
 import type { RouteID } from '../../app/routes'
 import { useBackend } from '../../app/backend-context'
 import type { Audit, CleanResult, Plan } from '../../shared/contracts/domain'
@@ -30,8 +30,8 @@ export default function OverviewScreen({ onNavigate }: { onNavigate: (route: Rou
   const [notice, setNotice] = useState<string | null>(null)
   const changed = resource.data?.plan.items.filter((item) => item.changed).length ?? 0
   const total = resource.data?.plan.items.length ?? 0
-  const score = total === 0 ? 0 : Math.round(((total - changed) / total) * 10)
-  const ringStyle = useMemo(() => ({ '--score': `${score * 10}%` }) as React.CSSProperties, [score])
+  const readiness = total === 0 ? 100 : Math.round(((total - changed) / total) * 100)
+  const ringStyle = useMemo(() => ({ '--score': `${readiness}%` }) as React.CSSProperties, [readiness])
   const refresh = () => { client.invalidate('optimization.'); resource.refresh() }
 
   const clean = async () => {
@@ -59,28 +59,31 @@ export default function OverviewScreen({ onNavigate }: { onNavigate: (route: Rou
       {resource.error ? <InlineAlert message={resource.error} onRetry={refresh} /> : null}
       {notice ? <div className="success-notice" role="status"><ShieldCheck size={18} />{notice}<button onClick={() => setNotice(null)} aria-label="Dismiss notification">×</button></div> : null}
 
-      <section className="overview-hero">
-        <div className="overview-hero__main panel panel--gold">
+      <section className="command-center panel panel--gold">
+        <div className="command-center__copy">
           <span className="eyebrow">{c.currentState}</span>
           <h2>{changed === 0 ? c.baselineReady : c.ready}</h2>
           <p>{changed === 0 ? c.allMatch : c.differ(changed)}</p>
-          <div className="overview-hero__actions">
+          <div className="command-center__actions">
             <Button variant="primary" onClick={() => onNavigate('profiles')}>{c.review} <ArrowRight size={16} /></Button>
             <Button variant="secondary" onClick={refresh}><RotateCw size={16} />{c.audit}</Button>
           </div>
-          <div className="score-ring" style={ringStyle} aria-label={c.scoreLabel(score)}><strong>{score}/10</strong><span>{c.targetsMatch}</span></div>
         </div>
-        <div className="overview-summary panel">
-          <h2>{c.activeProfile}</h2>
-          <p>{c.windowsBaseline}</p>
-          <dl>
-            <div><dt>{c.powerPlan}</dt><dd>{data.audit.active_power_guid ? c.detected : c.unavailable}</dd></div>
-            <div><dt>{c.elevation}</dt><dd>{data.audit.administrator ? c.administrator : c.onDemand}</dd></div>
-            <div><dt>{c.lastAudit}</dt><dd>{formatRelative(data.audit.generated_at, language)}</dd></div>
-            <div><dt>{c.findings}</dt><dd className={data.audit.optimization_findings.length ? 'text-warning' : 'text-success'}>{data.audit.optimization_findings.length}</dd></div>
-          </dl>
-        </div>
+        <div className="readiness-meter" style={ringStyle} aria-label={c.readinessLabel(readiness)}><strong>{readiness}%</strong><span>{c.targetsMatch}</span></div>
+        <dl className="command-center__facts">
+          <div><dt>{c.powerPlan}</dt><dd>{data.audit.active_power_guid ? c.detected : c.unavailable}</dd></div>
+          <div><dt>{c.elevation}</dt><dd>{data.audit.administrator ? c.administrator : c.onDemand}</dd></div>
+          <div><dt>{c.lastAudit}</dt><dd>{formatRelative(data.audit.generated_at, language)}</dd></div>
+          <div><dt>{c.findings}</dt><dd className={data.audit.optimization_findings.length ? 'text-warning' : 'text-success'}>{data.audit.optimization_findings.length}</dd></div>
+        </dl>
       </section>
+
+      <ol className="workflow-strip" aria-label={c.workflowLabel}>
+        <li className="workflow-strip__active"><span>1</span><div><strong>{c.stepAudit}</strong><small>{c.stepAuditDetail}</small></div></li>
+        <li><span>2</span><div><strong>{c.stepApply}</strong><small>{c.stepApplyDetail}</small></div></li>
+        <li><span>3</span><div><strong>{c.stepMeasure}</strong><small>{c.stepMeasureDetail}</small></div><Button variant="quiet" onClick={() => onNavigate('benchmarks')}><BarChart3 size={14} />{c.openMeasurements}</Button></li>
+        <li><span>4</span><div><strong>{c.stepRestore}</strong><small>{c.stepRestoreDetail}</small></div><Button variant="quiet" onClick={() => onNavigate('restore')}><RotateCcw size={14} />{c.openRecovery}</Button></li>
+      </ol>
 
       <div className="section-heading"><div><h2>{c.capabilities}</h2><p>{c.capabilitiesDescription}</p></div></div>
       <section className="panel capability-panel">
@@ -150,9 +153,9 @@ function capabilityDetail(id: string, fallback: string, language: 'ru' | 'en'): 
 
 const overviewCopy = {
   en: {
-    loading: 'Loading current system state…', title: 'System overview', shortDescription: 'Measured changes, exact rollback, no placebo presets.', description: 'Measured changes, exact rollback, no placebo presets. Unsupported controls stay visible but inactive.', currentState: 'Current state', baselineReady: 'Your measured baseline is ready', ready: 'Ready for a measured pass', allMatch: 'All Lite targets already match.', differ: (count: number) => `${count} targets differ from the safe Lite profile.`, review: 'Review Lite', audit: 'Run audit', scoreLabel: (score: number) => `Lite readiness: ${score} of 10`, targetsMatch: 'Targets match', activeProfile: 'Active profile', windowsBaseline: 'Windows gaming baseline', powerPlan: 'Power plan', detected: 'Detected', unavailable: 'Unavailable', elevation: 'Elevation', administrator: 'Administrator', onDemand: 'On demand', lastAudit: 'Last audit', findings: 'Findings', capabilities: 'Capabilities', capabilitiesDescription: 'Only controls supported by this machine are actionable.', skipped: 'Skipped', sessionTools: 'Session tools', sessionDescription: 'Game boost is available without elevating the game. Cleanup is limited to old application temp files.', clean: 'Clean old temp files', cleanTitle: 'Clean old temporary files?', cleanDescription: "Only files in Luxury Optimization's bounded temp scope older than 2 days are eligible.", cleanRule1: 'No user documents or game files', cleanRule2: 'Reparse points are skipped', cleanRule3: 'Elevated cleanup is refused', runCleanup: 'Run cleanup', cleanupResult: (files: number, size: string, skipped: number) => `Cleanup removed ${files} files and reclaimed ${size}; ${skipped} items were skipped safely.`,
+    loading: 'Loading current system state…', title: 'Your PC', shortDescription: 'Measured changes, exact rollback, no placebo presets.', description: 'See what matters, apply only supported changes and verify the result.', currentState: 'Recommended next step', baselineReady: 'Lite baseline already matches', ready: 'Review the safe recommended changes', allMatch: 'No Lite changes are currently required. Measure a game before trying a stronger profile.', differ: (count: number) => `${count} supported Lite targets differ. Review the exact changes before applying.`, review: 'Review optimization', audit: 'Refresh audit', readinessLabel: (score: number) => `Lite readiness: ${score} percent`, targetsMatch: 'Lite readiness', powerPlan: 'Power plan', detected: 'Detected', unavailable: 'Unavailable', elevation: 'Access', administrator: 'Administrator', onDemand: 'Requested only when applying', lastAudit: 'Audit', findings: 'Findings', workflowLabel: 'Optimization workflow', stepAudit: 'Audit', stepAuditDetail: 'Hardware and current state', stepApply: 'Apply', stepApplyDetail: 'Preview, checkpoint, read-back', stepMeasure: 'Measure', stepMeasureDetail: 'Compare repeatable runs', stepRestore: 'Restore', stepRestoreDetail: 'Exact saved state', openMeasurements: 'Open', openRecovery: 'Open', capabilities: 'Supported on this PC', capabilitiesDescription: 'Unavailable controls are reported and skipped without partial mutation.', skipped: 'Skipped', sessionTools: 'Session tools', sessionDescription: 'Game boost is available without elevating the game. Cleanup is limited to old application temp files.', clean: 'Clean old temp files', cleanTitle: 'Clean old temporary files?', cleanDescription: "Only files in Luxury Optimization's bounded temp scope older than 2 days are eligible.", cleanRule1: 'No user documents or game files', cleanRule2: 'Reparse points are skipped', cleanRule3: 'Elevated cleanup is refused', runCleanup: 'Run cleanup', cleanupResult: (files: number, size: string, skipped: number) => `Cleanup removed ${files} files and reclaimed ${size}; ${skipped} items were skipped safely.`,
   },
   ru: {
-    loading: 'Загрузка текущего состояния системы…', title: 'Обзор системы', shortDescription: 'Измеримые изменения, точный откат, никаких плацебо-твиков.', description: 'Измеримые изменения, точный откат, никаких плацебо-твиков. Недоступные настройки видны, но неактивны.', currentState: 'Текущее состояние', baselineReady: 'Измеримый базовый профиль готов', ready: 'Система готова к проверенному проходу', allMatch: 'Все цели Lite уже совпадают.', differ: (count: number) => `${count} целей отличаются от безопасного профиля Lite.`, review: 'Проверить Lite', audit: 'Запустить аудит', scoreLabel: (score: number) => `Готовность Lite: ${score} из 10`, targetsMatch: 'Цели совпадают', activeProfile: 'Активный профиль', windowsBaseline: 'Игровой базовый профиль Windows', powerPlan: 'Схема питания', detected: 'Определена', unavailable: 'Недоступна', elevation: 'Повышение прав', administrator: 'Администратор', onDemand: 'По запросу', lastAudit: 'Последний аудит', findings: 'Рекомендации', capabilities: 'Возможности', capabilitiesDescription: 'Активны только настройки, поддерживаемые этим компьютером.', skipped: 'Пропущено', sessionTools: 'Сессионные инструменты', sessionDescription: 'Игровой буст не повышает права игры. Очистка ограничена старыми временными файлами приложения.', clean: 'Очистить старый кеш', cleanTitle: 'Очистить старые временные файлы?', cleanDescription: 'Под удаление попадают только файлы в ограниченной temp-области Luxury Optimization старше 2 дней.', cleanRule1: 'Документы пользователя и файлы игр не затрагиваются', cleanRule2: 'Точки повторной обработки пропускаются', cleanRule3: 'Очистка с правами администратора запрещена', runCleanup: 'Запустить очистку', cleanupResult: (files: number, size: string, skipped: number) => `Удалено файлов: ${files}, освобождено ${size}; безопасно пропущено: ${skipped}.`,
+    loading: 'Загрузка текущего состояния системы…', title: 'Ваш ПК', shortDescription: 'Измеримые изменения, точный откат, никаких плацебо-твиков.', description: 'Сразу видно, что делать дальше, что изменится и как проверить результат.', currentState: 'Рекомендуемый следующий шаг', baselineReady: 'Базовый профиль Lite уже настроен', ready: 'Проверьте безопасные рекомендации', allMatch: 'Для Lite сейчас ничего менять не нужно. Сначала замерьте игру перед более сильным профилем.', differ: (count: number) => `Для Lite доступно изменений: ${count}. Проверьте точный список перед применением.`, review: 'Открыть оптимизацию', audit: 'Обновить аудит', readinessLabel: (score: number) => `Готовность Lite: ${score} процентов`, targetsMatch: 'Готовность Lite', powerPlan: 'Схема питания', detected: 'Определена', unavailable: 'Недоступна', elevation: 'Доступ', administrator: 'Администратор', onDemand: 'Запрос только при применении', lastAudit: 'Аудит', findings: 'Рекомендации', workflowLabel: 'Путь оптимизации', stepAudit: 'Аудит', stepAuditDetail: 'Железо и текущее состояние', stepApply: 'Применение', stepApplyDetail: 'Preview, checkpoint, read-back', stepMeasure: 'Замер', stepMeasureDetail: 'Сравнение повторяемых прогонов', stepRestore: 'Откат', stepRestoreDetail: 'Точное сохранённое состояние', openMeasurements: 'Открыть', openRecovery: 'Открыть', capabilities: 'Поддерживается на этом ПК', capabilitiesDescription: 'Недоступные настройки явно пропускаются без частичных изменений.', skipped: 'Пропущено', sessionTools: 'Сессионные инструменты', sessionDescription: 'Игровой буст не повышает права игры. Очистка ограничена старыми временными файлами приложения.', clean: 'Очистить старый кеш', cleanTitle: 'Очистить старые временные файлы?', cleanDescription: 'Под удаление попадают только файлы в ограниченной temp-области Luxury Optimization старше 2 дней.', cleanRule1: 'Документы пользователя и файлы игр не затрагиваются', cleanRule2: 'Точки повторной обработки пропускаются', cleanRule3: 'Очистка с правами администратора запрещена', runCleanup: 'Запустить очистку', cleanupResult: (files: number, size: string, skipped: number) => `Удалено файлов: ${files}, освобождено ${size}; безопасно пропущено: ${skipped}.`,
   },
 }

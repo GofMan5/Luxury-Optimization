@@ -4,7 +4,7 @@ Luxury Optimization is a Tauri v2 desktop application with a React frontend and 
 
 ## Frontend
 
-`frontend/src` is organized by user-facing slices: overview, tweaks, games, benchmarks, system, restore and updates. Shared contracts describe only JSON data crossing the sidecar boundary. A small TTL cache deduplicates reads and invalidates the affected prefixes after mutations.
+`frontend/src` is organized by user-facing slices: home, optimization, games, measurements, tools and recovery. Measurements composes the existing benchmark, network and storage slices; Tools composes background load, startup and services. Signed updates live in the global shell. Shared contracts describe only JSON data crossing the sidecar boundary. A small TTL cache deduplicates reads and invalidates the affected prefixes after mutations.
 
 The Tauri host in `frontend/src-tauri` owns the sidecar process. Rust validates frame size, request IDs and an exact method allowlist before a command reaches Go. The sidecar has no shell passthrough.
 

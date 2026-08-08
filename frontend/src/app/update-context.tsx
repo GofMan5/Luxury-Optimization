@@ -16,6 +16,7 @@ interface UpdateContextValue {
 
 const UpdateContext = createContext<UpdateContextValue | null>(null)
 const releaseVersion = /^1\.0\.\d+$/
+const automaticCheckDelayMs = 2_500
 
 export function isSupportedUpdateVersion(value: string): boolean { return releaseVersion.test(value) }
 
@@ -27,10 +28,11 @@ export function UpdateProvider({ children }: PropsWithChildren) {
   const [error, setError] = useState<string | null>(null)
   const update = useRef<Update | null>(null)
   const checking = useRef(false)
+  const checked = useRef(false)
 
   const checkNow = useCallback(async (): Promise<UpdateStatus> => {
     if (checking.current) throw new Error('Update check is already running.')
-    checking.current = true; setBusy('check'); setError(null)
+    checking.current = true; checked.current = true; setBusy('check'); setError(null)
     try {
       const current = await client.call<UpdateStatus>('updates.status', {})
       if (preview) {
@@ -91,7 +93,11 @@ export function UpdateProvider({ children }: PropsWithChildren) {
     }
   }, [client, preview])
 
-  useEffect(() => { void checkNow().catch(() => undefined) }, [checkNow])
+  useEffect(() => {
+    // Let the first screen become interactive before updater network and signature work.
+    const timer = window.setTimeout(() => { if (!checked.current) void checkNow().catch(() => undefined) }, automaticCheckDelayMs)
+    return () => window.clearTimeout(timer)
+  }, [checkNow])
 
   return <UpdateContext value={{ status, loading: status === null && error === null, busy, progress, error, checkNow, install }}>{children}</UpdateContext>
 }

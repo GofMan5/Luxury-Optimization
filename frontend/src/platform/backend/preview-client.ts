@@ -11,7 +11,7 @@ const hardware = {
 
 const audit: Audit = {
   generated_at: new Date().toISOString(),
-  version: '1.0.6-preview',
+  version: '1.0.7-preview',
   hardware,
   administrator: false,
   active_power_guid: 'Balanced',
@@ -64,7 +64,7 @@ export class PreviewBackendClient implements BackendClient {
     let result: unknown
     switch (method) {
       case 'system.handshake':
-        result = { product: 'Luxury Optimization', version: '1.0.6-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
+        result = { product: 'Luxury Optimization', version: '1.0.7-preview', protocol: 1, os: 'windows', arch: 'amd64', methods: [] } satisfies Handshake
         break
       case 'optimization.audit': result = audit; break
       case 'optimization.plan': result = previewPlan(body.profile === 'max' ? maxPlan : body.profile === 'medium' ? mediumPlan : litePlan, this.#tweakBackups); break
@@ -154,7 +154,7 @@ export class PreviewBackendClient implements BackendClient {
       case 'restore.open_system': result = { changed: false, message: 'Windows System Restore opened.' }; break
       case 'cleanup.run': result = { files: 18, dirs: 2, bytes: 14_680_064, skipped: 1 }; break
       case 'updates.status': result = updateStatus(); break
-      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.6', update_ready: false }; break
+      case 'updates.check': result = { ...updateStatus(), latest: 'v1.0.7', update_ready: false }; break
       case 'updates.install': result = { changed: false, message: 'Installed version is current.' }; break
       default: throw new Error(`Preview backend does not implement ${method}`)
     }
@@ -186,7 +186,7 @@ const previewGames: GamesReport = { games: [{ source: 'Steam', id: '730', name: 
 const previewBackups: BackupSummary[] = [{ id: '20260804T120000.000000000Z', created_at: new Date().toISOString(), profile: 'lite', status: 'applied', restorable: true }]
 const previewSystemPoints: SystemRestorePoint[] = [{ sequence_number: 42, description: 'Before driver update', created_at: new Date(Date.now() - 86_400_000).toISOString(), restore_point_type: 0 }]
 function updateStatus(): UpdateStatus {
-  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.6-preview', update_ready: false }
+  return { last_check: new Date().toISOString(), channel: '1.0', current: '1.0.7-preview', update_ready: false }
 }
 
 function previewBufferbloat(durationMS: number, streams: number): BufferbloatReport {
